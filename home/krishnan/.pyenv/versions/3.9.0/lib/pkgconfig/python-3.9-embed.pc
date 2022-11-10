@@ -1,0 +1,13 @@
+# See: man pkg-config
+prefix=/home/krishnan/TS/sel4cp/home/krishnan/.pyenv/versions/3.9.0
+exec_prefix=${prefix}
+libdir=/home/krishnan/TS/sel4cp/home/krishnan/.pyenv/versions/3.9.0/lib
+includedir=${prefix}/include
+
+Name: Python
+Description: Embed Python into an application
+Requires:
+Version: 3.9
+Libs.private: -lcrypt -ldl  -lm
+Libs: -L${libdir} -lpython3.9
+Cflags: -I${includedir}/python3.9

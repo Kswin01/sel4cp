@@ -80,10 +80,26 @@ SUPPORTED_BOARDS = (
         kernel_options = {
             "KernelPlatform": "imx8mm-evk",
             "KernelIsMCS": True,
+            "KernelArch": "KernelArmCortexA72",
             "KernelArmExportPCNTUser": True,
         },
         examples = {
             "ethernet": Path("example/imx8mm/passive_server")
+        }
+    ),
+    BoardInfo(
+        name="rpi4b",
+        gcc_cpu="cortex-a72",
+        loader_link_address=0x10000000,
+        kernel_options = {
+            "KernelPlatform": "bcm2711",
+            "KernelARMPlatform": "rpi4",
+            "KernelIsMCS": True,
+            "KernelArmExportPCNTUser": True,
+            "KernelSel4Arch": "aarch64"
+        },
+        examples = {
+            "hello": Path("example/rpi4/hello")
         }
     )
 )
