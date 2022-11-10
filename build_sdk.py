@@ -1,13 +1,9 @@
 """The SDK build script.
-
 # Why Python (and not make, or something else)?
-
 We call out to Make, but having this top-level driver script
 is useful.
-
 There are just a lot of things that are much easier in Python
 than in make.
-
 """
 from argparse import ArgumentParser
 from os import popen, system
@@ -108,7 +104,6 @@ SUPPORTED_CONFIGS = (
 
 def tar_filter(tarinfo: TarInfo) -> TarInfo:
     """This is used to change the tarinfo when created the .tar.gz archive.
-
     This ensures the tar file does not leak information from the build environment.
     """
     # Force uid/gid
@@ -236,7 +231,6 @@ def build_elf_component(
     defines: List[Tuple[str, str]]
 ) -> None:
     """Build a specific ELF component.
-
     Right now this is either the loader or the monitor
     """
     sel4_dir = root_dir / "board" / board.name / config.name
@@ -275,7 +269,6 @@ def build_lib_component(
     config: ConfigInfo,
 ) -> None:
     """Build a specific library component.
-
     Right now this is just libsel4.a
     """
     sel4_dir = root_dir / "board" / board.name / config.name
@@ -405,3 +398,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    
