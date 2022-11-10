@@ -80,7 +80,6 @@ SUPPORTED_BOARDS = (
         kernel_options = {
             "KernelPlatform": "imx8mm-evk",
             "KernelIsMCS": True,
-            "KernelArch": "KernelArmCortexA72",
             "KernelArmExportPCNTUser": True,
         },
         examples = {
