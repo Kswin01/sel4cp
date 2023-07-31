@@ -68,47 +68,58 @@ class ConfigInfo:
 
 SUPPORTED_BOARDS = (
     BoardInfo(
-        name="tqma8xqp1gb",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a35",
-        loader_link_address=0x80280000,
-        kernel_options = {
-            "KernelPlatform": "tqma8xqp1gb",
-            "KernelIsMCS": True,
-            "KernelArmExportPCNTUser": True,
-        },
-        examples = {
-            "ethernet": Path("example/tqma8xqp1gb/ethernet")
-        }
-    ),
-    BoardInfo(
-        name="zcu102",
+        name="ls1012a_frwy",
         arch=BoardArch.AARCH64,
         gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x40000000,
+        loader_link_address=0x96000000,
         kernel_options = {
-            "KernelPlatform": "zynqmp",
-            "KernelARMPlatform": "zcu102",
+            "KernelPlatform": "ls1012a-frwy",
             "KernelIsMCS": True,
-            "KernelArmHypervisorSupport": True,
-            "KernelArmExportPCNTUser": True,
-        },
-        examples = {
-            "hello": Path("example/zcu102/hello")
-        }
-    ),
-    BoardInfo(
-        name="imx8mq_evk",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x41000000,
-        kernel_options = {
-            "KernelPlatform": "imx8mq-evk",
-            "KernelIsMCS": True,
-            "KernelArmExportPCNTUser": True,
         },
         examples = {}
     ),
+    # BoardInfo(
+    #     name="tqma8xqp1gb",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a35",
+    #     loader_link_address=0x80280000,
+    #     kernel_options = {
+    #         "KernelPlatform": "tqma8xqp1gb",
+    #         "KernelIsMCS": True,
+    #         "KernelArmExportPCNTUser": True,
+    #     },
+    #     examples = {
+    #         "ethernet": Path("example/tqma8xqp1gb/ethernet")
+    #     }
+    # ),
+    # BoardInfo(
+    #     name="zcu102",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x40000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "zynqmp",
+    #         "KernelARMPlatform": "zcu102",
+    #         "KernelIsMCS": True,
+    #         "KernelArmHypervisorSupport": True,
+    #         "KernelArmExportPCNTUser": True,
+    #     },
+    #     examples = {
+    #         "hello": Path("example/zcu102/hello")
+    #     }
+    # ),
+    # BoardInfo(
+    #     name="imx8mq_evk",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x41000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "imx8mq-evk",
+    #         "KernelIsMCS": True,
+    #         "KernelArmExportPCNTUser": True,
+    #     },
+    #     examples = {}
+    # ),
     BoardInfo(
         name="imx8mm_evk",
         arch=BoardArch.AARCH64,
@@ -121,141 +132,141 @@ SUPPORTED_BOARDS = (
         },
         examples = {}
     ),
-    BoardInfo(
-        name="imx8mm_evk_hyp",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x41000000,
-        kernel_options = {
-            "KernelPlatform": "imx8mm-evk",
-            "KernelIsMCS": True,
-            "KernelArmExportPCNTUser": True,
-            "KernelArmHypervisorSupport": True,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="imx8mm_evk_2_cores",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x41000000,
-        kernel_options = {
-            "KernelPlatform": "imx8mm-evk",
-            "KernelIsMCS": True,
-            "KernelArmExportPCNTUser": True,
-            "KernelMaxNumNodes": 2,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="imx8mm_evk_4_cores",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x41000000,
-        kernel_options = {
-            "KernelPlatform": "imx8mm-evk",
-            "KernelIsMCS": True,
-            "KernelArmExportPCNTUser": True,
-            "KernelMaxNumNodes": 4,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="imx8mm_evk_4_cores_hyp",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x41000000,
-        kernel_options = {
-            "KernelPlatform": "imx8mm-evk",
-            "KernelIsMCS": True,
-            "KernelArmExportPCNTUser": True,
-            "KernelMaxNumNodes": 4,
-            "KernelArmHypervisorSupport": True,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="ultra96v2",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x40000000,
-        kernel_options = {
-            "KernelPlatform": "zynqmp",
-            "KernelARMPlatform": "ultra96v2",
-            "KernelIsMCS": True,
-            "KernelArmExportPCNTUser": True,
-        },
-        examples = {
-            "hello": Path("example/ultra96v2/hello")
-        }
-    ),
-    BoardInfo(
-        name="ultra96v2_hyp",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x40000000,
-        kernel_options = {
-            "KernelPlatform": "zynqmp",
-            "KernelARMPlatform": "ultra96v2",
-            "KernelIsMCS": True,
-            "KernelArmExportPCNTUser": True,
-            "KernelArmHypervisorSupport": True,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="qemu_arm_virt",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x70000000,
-        kernel_options = {
-            "KernelPlatform": "qemu-arm-virt",
-            "KernelIsMCS": True,
-            "KernelArmExportPCNTUser": True,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="qemu_arm_virt_cortex_a72",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a72",
-        loader_link_address=0x70000000,
-        kernel_options = {
-            "KernelPlatform": "qemu-arm-virt",
-            "KernelIsMCS": True,
-            "KernelArmExportPCNTUser": True,
-            "ARM_CPU": "cortex-a72",
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="qemu_arm_virt_hyp",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x70000000,
-        kernel_options = {
-            "KernelPlatform": "qemu-arm-virt",
-            "KernelIsMCS": True,
-            "KernelArmExportPCNTUser": True,
-            "KernelArmHypervisorSupport": True,
-            "QEMU_MEMORY": 2048,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="qemu_arm_virt_cortex_a72_hyp",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a72",
-        loader_link_address=0x70000000,
-        kernel_options = {
-            "KernelPlatform": "qemu-arm-virt",
-            "KernelIsMCS": True,
-            "ARM_CPU": "cortex-a72",
-            "KernelArmHypervisorSupport": True,
-            "QEMU_MEMORY": 2048,
-        },
-        examples = {}
-    ),
+    # BoardInfo(
+    #     name="imx8mm_evk_hyp",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x41000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "imx8mm-evk",
+    #         "KernelIsMCS": True,
+    #         "KernelArmExportPCNTUser": True,
+    #         "KernelArmHypervisorSupport": True,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="imx8mm_evk_2_cores",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x41000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "imx8mm-evk",
+    #         "KernelIsMCS": True,
+    #         "KernelArmExportPCNTUser": True,
+    #         "KernelMaxNumNodes": 2,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="imx8mm_evk_4_cores",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x41000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "imx8mm-evk",
+    #         "KernelIsMCS": True,
+    #         "KernelArmExportPCNTUser": True,
+    #         "KernelMaxNumNodes": 4,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="imx8mm_evk_4_cores_hyp",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x41000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "imx8mm-evk",
+    #         "KernelIsMCS": True,
+    #         "KernelArmExportPCNTUser": True,
+    #         "KernelMaxNumNodes": 4,
+    #         "KernelArmHypervisorSupport": True,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="ultra96v2",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x40000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "zynqmp",
+    #         "KernelARMPlatform": "ultra96v2",
+    #         "KernelIsMCS": True,
+    #         "KernelArmExportPCNTUser": True,
+    #     },
+    #     examples = {
+    #         "hello": Path("example/ultra96v2/hello")
+    #     }
+    # ),
+    # BoardInfo(
+    #     name="ultra96v2_hyp",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x40000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "zynqmp",
+    #         "KernelARMPlatform": "ultra96v2",
+    #         "KernelIsMCS": True,
+    #         "KernelArmExportPCNTUser": True,
+    #         "KernelArmHypervisorSupport": True,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="qemu_arm_virt",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x70000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "qemu-arm-virt",
+    #         "KernelIsMCS": True,
+    #         "KernelArmExportPCNTUser": True,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="qemu_arm_virt_cortex_a72",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a72",
+    #     loader_link_address=0x70000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "qemu-arm-virt",
+    #         "KernelIsMCS": True,
+    #         "KernelArmExportPCNTUser": True,
+    #         "ARM_CPU": "cortex-a72",
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="qemu_arm_virt_hyp",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x70000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "qemu-arm-virt",
+    #         "KernelIsMCS": True,
+    #         "KernelArmExportPCNTUser": True,
+    #         "KernelArmHypervisorSupport": True,
+    #         "QEMU_MEMORY": 2048,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="qemu_arm_virt_cortex_a72_hyp",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a72",
+    #     loader_link_address=0x70000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "qemu-arm-virt",
+    #         "KernelIsMCS": True,
+    #         "ARM_CPU": "cortex-a72",
+    #         "KernelArmHypervisorSupport": True,
+    #         "QEMU_MEMORY": 2048,
+    #     },
+    #     examples = {}
+    # ),
     # @ivanv: there were issues with turning on
     # secondary cores in the loader with QEMU,
     # need to re-investigate.
@@ -272,102 +283,102 @@ SUPPORTED_BOARDS = (
     #     },
     #     examples = {}
     # ),
-    BoardInfo(
-        name="odroidc2",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x20000000,
-        kernel_options = {
-            "KernelPlatform": "odroidc2",
-            "KernelIsMCS": True,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="odroidc2_hyp",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x20000000,
-        kernel_options = {
-            "KernelPlatform": "odroidc2",
-            "KernelIsMCS": True,
-            "KernelArmHypervisorSupport": True,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="odroidc4",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a55",
-        loader_link_address=0x20000000,
-        kernel_options = {
-            "KernelPlatform": "odroidc4",
-            "KernelIsMCS": True,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="odroidc4_hyp",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a55",
-        loader_link_address=0x20000000,
-        kernel_options = {
-            "KernelPlatform": "odroidc4",
-            "KernelIsMCS": True,
-            "KernelArmHypervisorSupport": True,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="rpi3b",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x10000000,
-        kernel_options = {
-            "KernelPlatform": "bcm2837",
-            "KernelARMPlatform": "rpi3",
-            "KernelIsMCS": True,
-            # The kernel will default to AARCH32, which is why we specify AARCH64
-            "KernelSel4Arch": "aarch64",
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="rpi4b",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a72",
-        loader_link_address=0x10000000,
-        kernel_options = {
-            "KernelPlatform": "bcm2711",
-            "KernelARMPlatform": "rpi4",
-            "KernelIsMCS": True,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="rpi4b_hyp",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a72",
-        loader_link_address=0x10000000,
-        kernel_options = {
-            "KernelPlatform": "bcm2711",
-            "KernelARMPlatform": "rpi4",
-            "KernelIsMCS": True,
-            "KernelArmHypervisorSupport": True,
-        },
-        examples = {}
-    ),
-    BoardInfo(
-        name="jetson_tx2",
-        arch=BoardArch.AARCH64,
-        gcc_flags="GCC_CPU=cortex-a57",
-        loader_link_address=0x81000000,
-        kernel_options = {
-            "KernelPlatform": "tx2",
-            "KernelIsMCS": True,
-        },
-        examples = {}
-    ),
+    # BoardInfo(
+    #     name="odroidc2",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x20000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "odroidc2",
+    #         "KernelIsMCS": True,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="odroidc2_hyp",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x20000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "odroidc2",
+    #         "KernelIsMCS": True,
+    #         "KernelArmHypervisorSupport": True,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="odroidc4",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a55",
+    #     loader_link_address=0x20000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "odroidc4",
+    #         "KernelIsMCS": True,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="odroidc4_hyp",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a55",
+    #     loader_link_address=0x20000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "odroidc4",
+    #         "KernelIsMCS": True,
+    #         "KernelArmHypervisorSupport": True,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="rpi3b",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a53",
+    #     loader_link_address=0x10000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "bcm2837",
+    #         "KernelARMPlatform": "rpi3",
+    #         "KernelIsMCS": True,
+    #         # The kernel will default to AARCH32, which is why we specify AARCH64
+    #         "KernelSel4Arch": "aarch64",
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="rpi4b",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a72",
+    #     loader_link_address=0x10000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "bcm2711",
+    #         "KernelARMPlatform": "rpi4",
+    #         "KernelIsMCS": True,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="rpi4b_hyp",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a72",
+    #     loader_link_address=0x10000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "bcm2711",
+    #         "KernelARMPlatform": "rpi4",
+    #         "KernelIsMCS": True,
+    #         "KernelArmHypervisorSupport": True,
+    #     },
+    #     examples = {}
+    # ),
+    # BoardInfo(
+    #     name="jetson_tx2",
+    #     arch=BoardArch.AARCH64,
+    #     gcc_flags="GCC_CPU=cortex-a57",
+    #     loader_link_address=0x81000000,
+    #     kernel_options = {
+    #         "KernelPlatform": "tx2",
+    #         "KernelIsMCS": True,
+    #     },
+    #     examples = {}
+    # ),
     # For RISC-V the link address for the seL4CP loader is dependent on the
     # previous loader. Currently for RISC-V platforms we use OpenSBI which
     # is placed at the start of memory and since we use FW_PAYLOAD, it places
@@ -433,19 +444,19 @@ SUPPORTED_BOARDS = (
     #     },
     #     examples = {}
     # ),
-    BoardInfo(
-        name="star64",
-        arch=BoardArch.RISCV64,
-        gcc_flags = "",
-        loader_link_address=0x60000000,
-        kernel_options = {
-            "KernelIsMCS": True,
-            "KernelPlatform": "star64",
-        },
-        examples = {
-            "hello": Path("example/star64/hello")
-        }
-    ),
+    # BoardInfo(
+    #     name="star64",
+    #     arch=BoardArch.RISCV64,
+    #     gcc_flags = "",
+    #     loader_link_address=0x60000000,
+    #     kernel_options = {
+    #         "KernelIsMCS": True,
+    #         "KernelPlatform": "star64",
+    #     },
+    #     examples = {
+    #         "hello": Path("example/star64/hello")
+    #     }
+    # ),
     # BoardInfo(
     #     name="x86_64",
     #     arch=BoardArch.X86_64,
@@ -458,6 +469,7 @@ SUPPORTED_BOARDS = (
     #     },
     #     examples = {}
     # ),
+    
 )
 
 SUPPORTED_CONFIGS = (

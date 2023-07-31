@@ -140,7 +140,7 @@ memcpy(void *dst, const void *src, size_t sz)
 }
 
 #define UART_REG(x) ((volatile uint32_t *)(UART_BASE + (x)))
-
+#define UART_REG_1_BYTE(x) ((volatile uint8_t *)(UART_BASE + (x)))
 #if defined(BOARD_tqma8xqp1gb)
 #define UART_BASE 0x5a070000
 #define STAT 0x14
@@ -290,6 +290,19 @@ putc(uint8_t ch)
 
     *((volatile uint32_t *)(UART_BASE + R_UART_TX_RX_FIFO)) = ch;
 }
+#elif defined(BOARD_ls1012a_frwy)
+#define UART_BASE 0x21c0500
+#define STAT 0x05
+#define TRANSMIT 0x00
+#define STAT_TDRE 0x20
+
+static void
+putc(uint8_t ch)
+{
+    while (!((*(volatile uint8_t *)(UART_BASE + STAT)) & STAT_TDRE)) { }
+    *((volatile uint8_t *)(UART_BASE + TRANSMIT)) = ch;
+}
+
 #else
 #error Board not defined
 #endif
