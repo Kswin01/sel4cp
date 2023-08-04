@@ -17,6 +17,7 @@ typedef unsigned int sel4cp_channel;
 typedef unsigned int sel4cp_id;
 typedef seL4_MessageInfo_t sel4cp_msginfo;
 
+#define REPLY_CAP 4
 #define MONITOR_ENDPOINT_CAP 5
 #define TCB_CAP 6
 #define BASE_OUTPUT_NOTIFICATION_CAP 10
@@ -174,6 +175,13 @@ static uint64_t
 sel4cp_mr_get(uint8_t mr)
 {
     return seL4_GetMR(mr);
+}
+
+static inline void
+sel4cp_fault_reply(sel4cp_msginfo msginfo)
+{
+    // @ivanv: revisit
+    seL4_Send(REPLY_CAP, msginfo);
 }
 
 #if defined(CONFIG_ARM_HYPERVISOR_SUPPORT) || defined(CONFIG_RISCV_HYPERVISOR_SUPPORT)

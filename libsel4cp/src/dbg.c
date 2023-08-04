@@ -27,7 +27,6 @@ sel4cp_dbg_puts(const char *s)
     }
 }
 
-
 void
 __assert_fail(const char  *str, const char *file, int line, const char *function)
 {

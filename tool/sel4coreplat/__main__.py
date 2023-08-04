@@ -67,6 +67,7 @@ from sel4coreplat.sel4 import (
     Sel4AsidPoolAssign,
     Sel4TcbBindNotification,
     Sel4TcbResume,
+    Sel4TcbSuspend,
     Sel4CnodeMint,
     Sel4CnodeCopy,
     Sel4UntypedRetype,
@@ -1776,6 +1777,9 @@ def build_system(
     # Resume (start) all the threads that are not virtual machines
     invocation = Sel4TcbResume(tcb_objects[0].cap_addr)
     invocation.repeat(count=len(system.protection_domains), tcb=1)
+    system_invocations.append(invocation)
+
+    invocation = Sel4TcbSuspend(INIT_TCB_CAP_ADDRESS)
     system_invocations.append(invocation)
 
     # All of the objects are created at this point; we don't need to both

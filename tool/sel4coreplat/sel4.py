@@ -1090,6 +1090,14 @@ class Sel4TcbResume(Sel4Invocation):
     label = Sel4Label.TCBResume
     tcb: int
 
+@dataclass
+class Sel4TcbSuspend(Sel4Invocation):
+    _object_type = "TCB"
+    _method_name = "Suspend"
+    _extra_caps = ()
+    label = Sel4Label.TCBSuspend
+    tcb: int
+
 # @ivanv: combine the arch specific TCB write regs
 @dataclass
 class Sel4AARCH64TcbWriteRegisters(Sel4Invocation):
