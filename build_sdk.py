@@ -488,12 +488,27 @@ SUPPORTED_CONFIGS = (
         name="benchmark",
         debug=False,
         kernel_options = {
-            "KernelDebugBuild": False,
+            "KernelDebugBuild": True,
             "KernelVerificationBuild": False,
+            "KernelPrinting": True,
             "KernelBenchmarks": "track_utilisation",
             "KernelArmExportPMUUser": True,
             # Enable signal fastpath for sDDF benchmarking
             "KernelSignalFastpath": True,
+        },
+    ),
+        ConfigInfo(
+        name="profile",
+        debug=False,
+        kernel_options = {
+            "KernelDebugBuild": True,
+            "KernelVerificationBuild": False,
+            "KernelPrinting": True,
+            "KernelBenchmarks": "track_utilisation",
+            "KernelArmExportPMUUser": True,
+            # Enable signal fastpath for sDDF benchmarking
+            "KernelSignalFastpath": True,
+            "ProfilerEnable": True,
         },
     ),
 )
