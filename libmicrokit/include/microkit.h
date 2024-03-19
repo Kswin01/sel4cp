@@ -18,6 +18,7 @@ typedef unsigned int microkit_channel;
 typedef unsigned int microkit_id;
 typedef seL4_MessageInfo_t microkit_msginfo;
 
+#define VSPACE_CAP 3
 #define REPLY_CAP 4
 #define MONITOR_ENDPOINT_CAP 5
 #define TCB_CAP 6
@@ -37,7 +38,7 @@ void notified(microkit_channel ch);
 microkit_msginfo protected(microkit_channel ch, microkit_msginfo msginfo);
 void fault(microkit_channel ch, microkit_msginfo msginfo);
 
-extern char microkit_name[16];
+extern char microkit_name[64];
 /* These next three variables are so our PDs can combine a signal with the next Recv syscall */
 extern bool have_signal;
 extern seL4_CPtr signal_cap;
@@ -294,6 +295,30 @@ microkit_riscv_vcpu_write_reg(microkit_id vm, uint64_t reg, uint64_t value)
     err = seL4_RISCV_VCPU_WriteRegs(BASE_VCPU_CAP + vm, reg, value);
     if (err != seL4_NoError) {
         microkit_dbg_puts("microkit_riscv_vcpu_write_reg: error VPPI\n");
+        microkit_internal_crash(err);
+    }
+}
+#endif
+
+#if defined(CONFIG_ARCH_ARM)
+static inline void
+microkit_arm_vspace_data_clean(uintptr_t start, uintptr_t end)
+{
+    seL4_Error err;
+    err = seL4_ARM_VSpace_Clean_Data(VSPACE_CAP, start, end);
+    if (err != seL4_NoError) {
+        microkit_dbg_puts("microkit_arm_vspace_data_clean: error cleaning cached data pages\n");
+        microkit_internal_crash(err);
+    }
+}
+
+static inline void
+microkit_arm_vspace_data_invalidate(uintptr_t start, uintptr_t end)
+{
+    seL4_Error err;
+    err = seL4_ARM_VSpace_Invalidate_Data(VSPACE_CAP, start, end);
+    if (err != seL4_NoError) {
+        microkit_dbg_puts("microkit_arm_vspace_data_invalidate: error invalidating cached data pages\n");
         microkit_internal_crash(err);
     }
 }
