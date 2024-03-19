@@ -211,6 +211,23 @@ SUPPORTED_BOARDS = (
         examples = {}
     ),
     BoardInfo(
+        name="qemu_arm_virt_gicv3",
+        arch=BoardArch.AARCH64,
+        gcc_flags="GCC_CPU=cortex-a53",
+        loader_link_address=0x70000000,
+        kernel_options = {
+            "KernelPlatform": "qemu-arm-virt",
+            "KernelIsMCS": True,
+            "KernelArmGicV3": True,
+            "KernelArmExportPTMRUser": True,
+            "KernelArmExportPCNTUser": True,
+            "KernelArmHypervisorSupport": True,
+            "KernelArmVtimerUpdateVOffset": False,
+            "QEMU_MEMORY": 2048,
+        },
+        examples = {}
+    ),
+    BoardInfo(
         name="qemu_arm_virt_cortex_a72",
         arch=BoardArch.AARCH64,
         gcc_flags="GCC_CPU=cortex-a72",
@@ -328,6 +345,21 @@ SUPPORTED_BOARDS = (
             "KernelIsMCS": True,
         },
         examples = {}
+    ),
+    BoardInfo(
+        name="maaxboard",
+        arch=BoardArch.AARCH64,
+        gcc_flags="GCC_CPU=cortex-a53",
+        loader_link_address=0x50000000,
+        kernel_options = {
+            "KernelPlatform": "maaxboard",
+            "KernelIsMCS": True,
+            "KernelArmExportPCNTUser": True,
+            "KernelArmHypervisorSupport": True,
+        },
+        examples = {
+            "hello": Path("example/maaxboard/hello")
+        }
     ),
     # For RISC-V the link address for the Microkit loader is dependent on the
     # previous loader. Currently for RISC-V platforms we use OpenSBI which
