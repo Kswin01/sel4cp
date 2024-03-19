@@ -308,6 +308,20 @@ SUPPORTED_BOARDS = (
         examples = {}
     ),
     BoardInfo(
+        name="odroidc4_2_cores",
+        arch=BoardArch.AARCH64,
+        gcc_flags="GCC_CPU=cortex-a55",
+        loader_link_address=0x20000000,
+        kernel_options = {
+            "KernelPlatform": "odroidc4",
+            "KernelIsMCS": True,
+            "KernelArmVtimerUpdateVOffset": False,
+            "KernelIRQReporting": False,
+            "KernelMaxNumNodes": 2,
+        },
+        examples = {}
+    ),
+    BoardInfo(
         name="rpi3b",
         arch=BoardArch.AARCH64,
         gcc_flags="GCC_CPU=cortex-a53",
@@ -350,7 +364,7 @@ SUPPORTED_BOARDS = (
         name="maaxboard",
         arch=BoardArch.AARCH64,
         gcc_flags="GCC_CPU=cortex-a53",
-        loader_link_address=0x40480000,
+        loader_link_address=0x50000000,
         kernel_options = {
             "KernelPlatform": "maaxboard",
             "KernelIsMCS": True,
@@ -486,11 +500,10 @@ SUPPORTED_CONFIGS = (
     # @ivanv: This has ARM specific kernel options
     ConfigInfo(
         name="benchmark",
-        debug=False,
+        debug=True,
         kernel_options = {
             "KernelDebugBuild": True,
             "KernelVerificationBuild": False,
-            "KernelPrinting": True,
             "KernelBenchmarks": "track_utilisation",
             "KernelArmExportPMUUser": True,
             # Enable signal fastpath for sDDF benchmarking

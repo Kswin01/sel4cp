@@ -654,8 +654,12 @@ monitor(void)
 
                 break;
             }
+
             default:
-                puts("Unknown fault\n");
+                puts("Unknown fault: ");
+                puthex64(label);
+                puts("\n");
+
                 break;
         }
     }
