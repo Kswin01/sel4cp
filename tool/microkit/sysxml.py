@@ -353,7 +353,7 @@ def xml2pd(pd_xml: ET.Element, plat_desc: PlatformDescription, is_child: bool=Fa
                 if setvar_vaddr:
                     setvars.append(SysSetVar(setvar_vaddr, vaddr=vaddr))
             elif child.tag == "irq":
-                _check_attrs(child, ("irq", "id", "trigger", "target"))
+                _check_attrs(child, ("irq", "id", "trigger"))
                 irq = int(checked_lookup(child, "irq"), base=0)
                 irq_id = int(checked_lookup(child, "id"), base=0)
                 trigger_str = child.attrib.get("trigger", "level")
@@ -363,7 +363,7 @@ def xml2pd(pd_xml: ET.Element, plat_desc: PlatformDescription, is_child: bool=Fa
                     trigger = Sel4ArmIrqTrigger.Edge
                 else:
                     raise UserError(f"Invalid IRQ trigger '{trigger_str}': {child._loc_str}")
-                target = int(child.attrib.get("target", "0"), base=0)
+                target = cpu
                 irqs.append(SysIrq(irq, irq_id, trigger, target))
             elif child.tag == "setvar":
                 _check_attrs(child, ("symbol", "region_paddr"))
