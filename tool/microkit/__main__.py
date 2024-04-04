@@ -1305,6 +1305,7 @@ def build_system(
             cap_slot += 1
             cap_address_names[cap_address] = f"IRQ Handler: irq={sysirq.irq:d}"
             irq_cap_addresses[pd].append(cap_address)
+
     # This has to be done prior to minting!
     # for vspace_obj in vspace_objects:
     #     system_invocations.append(Sel4AsidPoolAssign(INIT_ASID_POOL_CAP_ADDRESS, vspace_obj.cap_addr))

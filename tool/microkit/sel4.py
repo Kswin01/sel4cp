@@ -755,7 +755,6 @@ class Sel4Label(IntEnum):
     # ARM IRQ
     ARMIRQIssueIRQHandlerTrigger = 57
     ARMIRQIssueIRQHandlerTriggerCore = 58
-
     # RISC-V Page Table
     RISCVPageTableMap = 59
     RISCVPageTableUnmap = 60
@@ -769,7 +768,6 @@ class Sel4Label(IntEnum):
     # RISC-V IRQ
     RISCVIRQIssueIRQHandlerTrigger = 66
     RISCVIRQIssueIRQHandlerTriggerCore = 67
-
     # RISC-V VCPU
     RISCVVCPUSetTCB = 68
     RISCVVCPUReadReg = 69
@@ -799,7 +797,6 @@ AARCH64_LABELS = {
     # ARM IRQ
     Sel4Label.ARMIRQIssueIRQHandlerTrigger: 52,
     Sel4Label.ARMIRQIssueIRQHandlerTriggerCore: 53
-
 }
 
 AARCH64_HYP_LABELS = {
@@ -812,7 +809,6 @@ AARCH64_HYP_LABELS = {
     # ARM IRQ
     Sel4Label.ARMIRQIssueIRQHandlerTrigger: 57,
     Sel4Label.ARMIRQIssueIRQHandlerTriggerCore: 58
-
 }
 
 RISCV_LABELS = {
