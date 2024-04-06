@@ -11,25 +11,25 @@ ifeq ($(strip $(GCC_CPU)),)
 $(error GCC_CPU must be specified)
 endif
 
-TOOLCHAIN := aarch64-none-elf-
-CFLAGS := -std=gnu11 -g3 -O3 -nostdlib -ffreestanding -mcpu=$(GCC_CPU) -Wall -Wno-maybe-uninitialized -Wno-unused-function -Werror -Iinclude -I$(SEL4_SDK)/include
+TOOLCHAIN := clang 
+CFLAGS := -std=gnu11 -g3 -O3 -nostdlib -ffreestanding -mcpu=$(GCC_CPU) -Wall -Wno-maybe-uninitialized -Wno-unused-function -Werror -Iinclude -I$(SEL4_SDK)/include -fno-emulated-tls --target=aarch64-none-elf
 
 LIBS := libsel4cp
 OBJS := main.o dbg.o
 OTHER_OBJS :=
 
 $(BUILD_DIR)/%.o : src/%.S
-	$(TOOLCHAIN)gcc -x assembler-with-cpp -c -g  -mcpu=$(GCC_CPU)  $< -o $@
+	$(TOOLCHAIN) -x assembler-with-cpp -c -g  -mcpu=$(GCC_CPU)  $< -o $@
 
 $(BUILD_DIR)/%.o : src/%.s
-	$(TOOLCHAIN)as -g -mcpu=$(GCC_CPU) $< -o $@
+	$(TOOLCHAIN) -g -mcpu=$(GCC_CPU) $< -o $@
 
 $(BUILD_DIR)/%.o : src/%.c
-	$(TOOLCHAIN)gcc -c $(CFLAGS) $< -o $@
+	$(TOOLCHAIN) -c $(CFLAGS) $< -o $@
 
 LIB = $(addprefix $(BUILD_DIR)/, $(LIBS).a)
 
 all: $(LIB) $(addprefix $(BUILD_DIR)/, $(OTHER_OBJS))
 
 $(LIB): $(addprefix $(BUILD_DIR)/, $(OBJS))
-	$(TOOLCHAIN)ar -rv $@ $^
+	llvm-ar -rv $@ $^
