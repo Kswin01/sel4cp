@@ -4,9 +4,10 @@
 #include <sel4cp/sel4cp.h>
 #include <sel4cp/thread.h>
 
-#define SYSCALL_THREAD_CREATE 1
+#define SYSCALL_THREAD_CREATE1 1
 #define SYSCALL_THREAD_BLOCK 2
 #define SYSCALL_THREAD_RELEASE 3
+#define SYSCALL_THREAD_CREATE2 4
 
 void
 init(void)
@@ -21,11 +22,11 @@ bool protected(bool is_child, sel4cp_identifier identifier, sel4cp_msginfo *msgi
 
     uint64_t syscall = sel4cp_msginfo_get_label(*msginfo);
     switch (syscall) {
-    case SYSCALL_THREAD_CREATE:
-        // seL4_DebugSnapshot();
+    case SYSCALL_THREAD_CREATE1: {
+                // seL4_DebugSnapshot();
         sel4cp_thread new_thread = 1; // only PD is id 0, so the thread is 1
 
-        uint64_t budget = 1000;
+        uint64_t budget = 200;
         uint64_t period = 1000;
 
         sel4cp_thread_set_sched_params(new_thread, budget, period, true);
@@ -50,15 +51,16 @@ bool protected(bool is_child, sel4cp_identifier identifier, sel4cp_msginfo *msgi
 
         sel4cp_thread_resume(new_thread);
         break;
-    case SYSCALL_THREAD_BLOCK:
-        sel4cp_dbg_puts("os: thread requested to block\n");
+    }
+    case SYSCALL_THREAD_BLOCK: {
+        sel4cp_dbg_puts("os: thread requested to block.\n");
         sel4cp_thread_swap_reply(0);
-        return false;
+        return true;
+    }
     case SYSCALL_THREAD_RELEASE:
         sel4cp_dbg_puts("os: release\n");
         sel4cp_thread_swap_reply(0);
         sel4cp_dbg_puts("os: swapped replies\n");
-        break;
     default:
         break;
     }

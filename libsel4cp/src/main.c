@@ -86,7 +86,13 @@ handler_loop(void)
         } else if (GET_BADGE_TYPE(badge) == BADGE_TYPE_PPC) {
             have_reply = protected(false, badge & BADGE_PPC_CHANNEL_MASK, &tag);
         } else if (GET_BADGE_TYPE(badge) == BADGE_TYPE_ROOT_PPC) {
+            sel4cp_dbg_puts("Doing rootppc\n");
             have_reply = protected(true, badge & BADGE_ROOT_PPC_TID_MASK, &tag);
+            if(have_reply) {
+                sel4cp_dbg_puts("Done with rootppc, we have a reply\n");
+            } else {
+                sel4cp_dbg_puts("Done with rootppc, no reply\n");
+            }
         } else {
             unsigned int idx = 0;
             do  {

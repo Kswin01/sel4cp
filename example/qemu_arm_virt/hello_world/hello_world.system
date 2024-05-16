@@ -22,7 +22,7 @@
             <program_image path="os/os.elf" />
 
             <!-- User application -->
-            <protection_domain name="hello" priority="200" pd_id="0" budget="1000" period="1000">
+            <protection_domain name="hello" priority="240" pd_id="0" budget="200" period="1000">
                 <!-- Path to image of the user processes, this will contain the entry
                      point for the user application. -->
                 <program_image path="hello/hello.elf" />

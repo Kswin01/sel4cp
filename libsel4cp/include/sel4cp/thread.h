@@ -124,21 +124,18 @@ static sel4cp_errno
 sel4cp_thread_swap_reply(sel4cp_thread thread)
 {
     seL4_Error err;
-
     err = seL4_CNode_Rotate(
-        SELF_CNODE_CPTR,
-        REPLY_CPTR,
-        9,
-        0,
         SELF_CNODE_CPTR,
         THREAD_REPLY(thread),
         9,
         0,
         SELF_CNODE_CPTR,
         REPLY_CPTR,
+        9,
+        0,
+        SELF_CNODE_CPTR,
+        THREAD_REPLY(thread),
         9
     );
-    seL4_Assert(!err);
-
     return err;
 }
