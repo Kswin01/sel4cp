@@ -13,6 +13,7 @@ extern char __tbss_end;
 
 /* TLS variables */
 __thread seL4_IPCBuffer *__sel4_ipc_buffer;
+uint64_t curr_tid;
 
 void sel4cp_thread_setup(uint64_t tid, int (*entry)(void))
 {
@@ -42,7 +43,7 @@ void sel4cp_thread_setup(uint64_t tid, int (*entry)(void))
     /* Set any TLS variables we need. */
     const uintptr_t ipc_buffer = VSPACE_IPCBUFF_START + tid * VSPACE_IPCBUFF_SIZE;
     __sel4_ipc_buffer = (seL4_IPCBuffer *)ipc_buffer;
-
+    curr_tid = tid;
     /* Call the actual thread entry.
      * NOTE: Do nothing with the return value for now.
      */
