@@ -438,7 +438,7 @@ SUPPORTED_BOARDS = (
         kernel_options = {
             "KernelIsMCS": True,
             "KernelPlatform": "star64",
-        },
+         },
         examples = {
             "hello": Path("example/star64/hello")
         }
@@ -482,7 +482,8 @@ SUPPORTED_CONFIGS = (
         kernel_options = {
             "KernelDebugBuild": True,
             "KernelPrinting": True,
-            "KernelVerificationBuild": False
+            "KernelVerificationBuild": False,
+            "KernelIRQReporting": True
         }
     ),
     # @ivanv: This has ARM specific kernel options

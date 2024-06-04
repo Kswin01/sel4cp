@@ -230,6 +230,8 @@ start_kernel(void)
         loader_data->v_entry,
         0,
         0,
+        // 1,
+        // 0,
         loader_data->extra_device_addr_p, // @ivanv note that for SMP this will have to change!!
         loader_data->extra_device_size
     );
