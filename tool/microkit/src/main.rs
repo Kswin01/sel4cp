@@ -1659,6 +1659,9 @@ fn build_system(
         .iter()
         .map(|(vm_idx, vaddr)| format!("PageTable: VM={} VADDR=0x{:x}", vm_names[*vm_idx], vaddr))
         .collect();
+    for pud in pd_ud_names.iter() {
+        println!("PUD: {}", pud);
+    }
 
     let pd_ud_objs = init_system.allocate_objects(ObjectType::PageTable, pd_ud_names, None);
     let vm_ud_objs = init_system.allocate_objects(ObjectType::PageTable, vm_ud_names, None);
@@ -1688,6 +1691,33 @@ fn build_system(
         .collect();
     let pd_pt_objs = init_system.allocate_objects(ObjectType::PageTable, pd_pt_names, None);
     let vm_pt_objs = init_system.allocate_objects(ObjectType::PageTable, vm_pt_names, None);
+
+
+    // we use bools to indicate if a page has been mapped on the page table level
+    // then we have 512 optionals, representing our page tables
+    // then we have 512 optionals again, representing our page directories
+    // then we have 512 optionals again, representing our page upper directories
+    let mut fake_tables: Vec<Vec<Option<Vec<Option<Vec<Option<Vec<bool>>>>>>>> = vec! [vec![None; 512]; 64];
+
+    // map the first pud, so from 0x0000'0000 - 0x4000'0000
+    for i in 0..64 {
+        fake_tables[i][0] = Some(vec![None; 512]);
+    }
+
+    for (pd_idx, vaddr) in &all_pd_ds {
+        let d_idx : usize = (vaddr >> 30) as usize & 0x1F;
+        fake_tables[*pd_idx][0].as_mut().unwrap()[d_idx] = Some(vec![None;512])
+    }
+
+    for (pd_idx, vaddr) in &all_pd_pts {
+        let d_idx : usize = (vaddr >> 30) as usize & 0x1F;
+        let pt_idx : usize = (vaddr >> 21) as usize & 0x1F;
+        fake_tables[*pd_idx][0].as_mut().unwrap()[d_idx].as_mut().unwrap()[pt_idx] = Some(vec![false; 512]);
+    }
+
+    // A page table covers 0x200000 of the address space
+    // Page = 0x1000, 512 pages
+    // Now we need to mark which of those 512 pages have been mapped
 
     // Create CNodes - all CNode objects are the same size: 128 slots.
     let mut cnode_names: Vec<String> = system
@@ -1832,6 +1862,16 @@ fn build_system(
                 assert!(!mr_pages[mr].is_empty());
                 assert!(util::objects_adjacent(&mr_pages[mr]));
 
+                for page_idx in 0..mr_pages[mr].len() {
+                    let vaddr = mp.vaddr + mr.page_bytes() * page_idx as u64;
+                    let d_idx = (vaddr >> 30) as usize & 0x1F;
+                    let pt_idx = (vaddr >> 21) as usize & 0x1F;
+                    let page_idx = (vaddr >> 12) as usize & 0x1F;
+
+                    fake_tables[pd_idx][0].as_mut().unwrap()[d_idx].as_mut().unwrap()[pt_idx].as_mut().unwrap()[page_idx] = true;
+                    println!("Installed frame: 0x{:X} onto (d: {}) (pt: {}): ", vaddr, d_idx, pt_idx);
+                }
+
                 let mut invocation = Invocation::new(
                     config,
                     InvocationArgs::CnodeMint {
@@ -1883,6 +1923,37 @@ fn build_system(
                 }
 
                 cap_slot += mr_pages[mr].len() as u64;
+            }
+        }
+    }
+
+    println!("First pd virtual address space");
+    let page_size = 0x1000;
+    let pt_size = page_size * 512;
+    let d_size = pt_size * 512;
+    let pud_size = d_size * 512;
+    assert!(pud_size == 0x8000000000); // one pud covers 512 GiB
+
+    for (pud_idx, pud) in fake_tables[0].iter().enumerate() {
+        if pud.is_some() {
+            let pud_base = pud_idx * pud_size;
+            for (d_idx, d) in pud.as_ref().unwrap().iter().enumerate() {
+                if d.is_some() {
+                    let d_base = d_idx * d_size;
+                    for (pt_idx, pt) in d.as_ref().unwrap().iter().enumerate() {
+                        if pt.is_some() {
+                            let pt_base = pt_idx * pt_size;
+                            if pt.is_some() {
+                                for (page_idx, page) in pt.as_ref().unwrap().iter().enumerate() {
+                                    let pg_idx = page_idx * page_size; 
+                                    if *page {
+                                        println!("[0] Mapped page: 0x{:X}", pg_idx + pt_base + d_base + pud_base);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1977,6 +2048,11 @@ fn build_system(
     let mut all_mr_by_name_sorted: Vec<&&str> = all_mr_by_name.keys().collect();
     all_mr_by_name_sorted.sort();
 
+    for mr in all_mr_by_name.values() {
+        println!("INFO: mr: {} frames: {}", mr.name, mr_pages[mr].len());
+    }
+
+
     for (pd_idx, parent) in system.protection_domains.iter().enumerate() {
         for maybe_child_pd in system.protection_domains.iter() {
             if let Some(parent_idx) = maybe_child_pd.parent {
@@ -1986,6 +2062,7 @@ fn build_system(
                             println!("parent: {} wants to map this child memory regions: {}", parent.name, child_mr_name);
 
                             let child_mr = all_mr_by_name[*child_mr_name];
+                            println!("we have {} frames", mr_pages[child_mr].len());
                             let mut invocation = Invocation::new(InvocationArgs::CnodeMint{
                                 cnode: cnode_objs[pd_idx].cap_addr,
                                 dest_index: base_frame_cap,
