@@ -2121,16 +2121,21 @@ fn build_system(
         }
     }
 
-    let mut sorted_mp_mr_pairs: Vec<(&SysMap, &SysMemoryRegion)> = vec![];
+    // TODO: this is unnecessary now
+    let mut sorted_mp_mr_pairs: Vec<(&SysMap, &SysMemoryRegion, String)> = vec![];
     for pd in system.protection_domains.iter() {
         for map_set in [&pd.maps, &pd_extra_maps[pd]] {
             for mp in map_set {
                 let mr = all_mr_by_name[mp.mr.as_str()];
-                sorted_mp_mr_pairs.push((mp, mr));
+                let id = mr.name.clone() + " " + &pd.name;
+                sorted_mp_mr_pairs.push((mp, mr, id));
             }
         }
     }
     sorted_mp_mr_pairs.sort_by(|a, b| a.1.name.cmp(&b.1.name));
+    for p in &sorted_mp_mr_pairs {
+        println!("{}", p.1.name);
+    }
     let mut base_frame_cap = BASE_FRAME_CAP;
 
     // If a pd has a parent, we mint the child's frame caps into the parent's vspace
@@ -2142,7 +2147,8 @@ fn build_system(
                     for mp_mr_pair in &sorted_mp_mr_pairs {
                         let child_mp = mp_mr_pair.0;
                         let child_mr = mp_mr_pair.1;
-                        if child_mr.name.contains(&maybe_child_pd.name) {
+                        let name = &mp_mr_pair.2;
+                        if name.contains(&maybe_child_pd.name) {
                             println!("parent: {} wants to map this child memory regions: {}", parent.name, child_mr.name);
 
                             println!("we have {} frames", mr_pages[child_mr].len());
@@ -2237,7 +2243,8 @@ fn build_system(
         metadata_writer.flush().unwrap();
         data_writer.flush().unwrap();
 
-        // now read metadata file (NOTE: none of this is necessary)
+        // DECODING ==========================================================================
+        // NOTE: using this for now since we don't actually want to write out to an external file
         let file = std::fs::File::open(format!("{}_metadata", parent.name)).unwrap();
         let mut reader = std::io::BufReader::new(file);
         let mut buffer = Vec::new();
@@ -2251,7 +2258,6 @@ fn build_system(
             u64s.push(value);
         }
 
-        // DECODING ===========
         let decode_file = std::fs::File::open(format!("{}_data", parent.name)).unwrap();
         let mut decode_reader = std::io::BufReader::new(decode_file);
         let mut decode_buffer = Vec::new();
@@ -2286,8 +2292,17 @@ fn build_system(
         }
 
         decode(&decode_contents, u64s[1], 0, 0);
-    }
+        // DECODING ==========================================================================
+        
+        // patch the data in
+        let elf = &mut pd_elf_files[pd_idx];
 
+        let table_metadata : Vec<u8> = page_table_array.iter().flat_map(|&value| value.to_le_bytes()).collect();
+        let table_data : Vec<u8> = decode_contents.iter().flat_map(|&value| value.to_le_bytes()).collect();
+        elf.write_symbol("table_metadata", &table_metadata)?;
+        elf.write_symbol("table_data", &table_data)?;
+
+    }
 
     let mut badged_irq_caps: HashMap<&ProtectionDomain, Vec<u64>> = HashMap::new();
     for (notification_obj, pd) in zip(&notification_objs, &system.protection_domains) {
