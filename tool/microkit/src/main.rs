@@ -26,7 +26,7 @@ use sel4::{
 use std::cmp::{max, min};
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter, Read, Write};
 use std::iter::zip;
 use std::mem::size_of;
 use std::path::{Path, PathBuf};
@@ -1697,7 +1697,8 @@ fn build_system(
     // then we have 512 optionals, representing our page tables
     // then we have 512 optionals again, representing our page directories
     // then we have 512 optionals again, representing our page upper directories
-    let mut fake_tables: Vec<Vec<Option<Vec<Option<Vec<Option<Vec<bool>>>>>>>> = vec! [vec![None; 512]; 64];
+    // and then one, page global directory...?
+    let mut fake_tables: Vec<Vec<Option<Vec<Option<Vec<Option<Vec<u64>>>>>>>> = vec! [vec![None; 512]; 64];
 
     // map the first pud, so from 0x0000'0000 - 0x4000'0000
     for i in 0..64 {
@@ -1705,14 +1706,14 @@ fn build_system(
     }
 
     for (pd_idx, vaddr) in &all_pd_ds {
-        let d_idx : usize = (vaddr >> 30) as usize & 0x1F;
+        let d_idx = (vaddr >> 30) as usize & 0x1F;
         fake_tables[*pd_idx][0].as_mut().unwrap()[d_idx] = Some(vec![None;512])
     }
 
     for (pd_idx, vaddr) in &all_pd_pts {
-        let d_idx : usize = (vaddr >> 30) as usize & 0x1F;
-        let pt_idx : usize = (vaddr >> 21) as usize & 0x1F;
-        fake_tables[*pd_idx][0].as_mut().unwrap()[d_idx].as_mut().unwrap()[pt_idx] = Some(vec![false; 512]);
+        let d_idx = (vaddr >> 30) as usize & 0x1F;
+        let pt_idx = (vaddr >> 21) as usize & 0x1F;
+        fake_tables[*pd_idx][0].as_mut().unwrap()[d_idx].as_mut().unwrap()[pt_idx] = Some(vec![u64::MAX; 512]);
     }
 
     // A page table covers 0x200000 of the address space
@@ -1927,37 +1928,6 @@ fn build_system(
         }
     }
 
-    println!("First pd virtual address space");
-    let page_size = 0x1000;
-    let pt_size = page_size * 512;
-    let d_size = pt_size * 512;
-    let pud_size = d_size * 512;
-    assert!(pud_size == 0x8000000000); // one pud covers 512 GiB
-
-    for (pud_idx, pud) in fake_tables[0].iter().enumerate() {
-        if pud.is_some() {
-            let pud_base = pud_idx * pud_size;
-            for (d_idx, d) in pud.as_ref().unwrap().iter().enumerate() {
-                if d.is_some() {
-                    let d_base = d_idx * d_size;
-                    for (pt_idx, pt) in d.as_ref().unwrap().iter().enumerate() {
-                        if pt.is_some() {
-                            let pt_base = pt_idx * pt_size;
-                            if pt.is_some() {
-                                for (page_idx, page) in pt.as_ref().unwrap().iter().enumerate() {
-                                    let pg_idx = page_idx * page_size; 
-                                    if *page {
-                                        println!("[0] Mapped page: 0x{:X}", pg_idx + pt_base + d_base + pud_base);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     let mut vm_page_descriptors = Vec::new();
     for (vm_idx, vm) in virtual_machines.iter().enumerate() {
         for mp in &vm.maps {
@@ -2044,24 +2014,33 @@ fn build_system(
     }
 
     // mint frame caps of child into parent
+    let mut sorted_mp_mr_pairs: Vec<(&SysMap, &SysMemoryRegion)> = vec![];
+    for pd in system.protection_domains.iter() {
+        for map_set in [&pd.maps, &pd_extra_maps[pd]] {
+            for mp in map_set {
+                let mr = all_mr_by_name[mp.mr.as_str()];
+                sorted_mp_mr_pairs.push((mp, mr));
+            }
+        }
+    }
+    sorted_mp_mr_pairs.sort_by(|a, b| a.1.name.cmp(&b.1.name));
+
     let mut base_frame_cap = BASE_FRAME_CAP;
-    let mut all_mr_by_name_sorted: Vec<&&str> = all_mr_by_name.keys().collect();
-    all_mr_by_name_sorted.sort();
 
     for mr in all_mr_by_name.values() {
         println!("INFO: mr: {} frames: {}", mr.name, mr_pages[mr].len());
     }
 
-
     for (pd_idx, parent) in system.protection_domains.iter().enumerate() {
         for maybe_child_pd in system.protection_domains.iter() {
             if let Some(parent_idx) = maybe_child_pd.parent {
                 if parent_idx == pd_idx {
-                    for child_mr_name  in &all_mr_by_name_sorted {
-                        if child_mr_name.contains(&maybe_child_pd.name) {
-                            println!("parent: {} wants to map this child memory regions: {}", parent.name, child_mr_name);
+                    for mp_mr_pair in &sorted_mp_mr_pairs {
+                        let child_mp = mp_mr_pair.0;
+                        let child_mr = mp_mr_pair.1;
+                        if child_mr.name.contains(&maybe_child_pd.name) {
+                            println!("parent: {} wants to map this child memory regions: {}", parent.name, child_mr.name);
 
-                            let child_mr = all_mr_by_name[*child_mr_name];
                             println!("we have {} frames", mr_pages[child_mr].len());
                             let mut invocation = Invocation::new(InvocationArgs::CnodeMint{
                                 cnode: cnode_objs[pd_idx].cap_addr,
@@ -2086,6 +2065,25 @@ fn build_system(
                                 badge: 0,
                             });
 
+                            for mr_idx in 0..mr_pages[child_mr].len() {
+                                let cap = mr_pages[child_mr][mr_idx].cap_addr;
+
+                                let vaddr = child_mp.vaddr + child_mr.page_bytes() * mr_idx as u64;
+                                let d_idx = (vaddr >> 30) as usize & 0x1F;
+                                let pt_idx = (vaddr >> 21) as usize & 0x1F;
+                                let page_idx = (vaddr >> 12) as usize & 0x1F;
+
+                                let a = fake_tables[pd_idx][0].as_mut().unwrap();
+                                let b = a[d_idx].as_mut().unwrap();
+                                if b[pt_idx].is_some() {
+                                    let minted_cap = base_frame_cap + mr_idx as u64;
+                                    b[pt_idx].as_mut().unwrap()[page_idx] = minted_cap;
+                                    println!("cap name: {} frame cap: 0x{:X} minted cap: 0x{:X} vaddr: 0x{:X}", cap_address_names.get(&cap).unwrap(), mr_pages[child_mr][0].cap_addr + mr_idx as u64, minted_cap, vaddr);
+                                } else {
+                                    panic!("[{}] Failed to map page on pt: {} region name: {}", pd_names[pd_idx], pt_idx, child_mr.name);
+                                }
+                            }
+
                             base_frame_cap += mr_pages[child_mr].len() as u64;
 
                             system_invocations.push(invocation);
@@ -2096,6 +2094,222 @@ fn build_system(
             }
         }
     }
+
+    let page_size : u64 = 0x1000;
+    let pt_size = page_size * 512;
+    let d_size = pt_size * 512;
+    let pud_size = d_size * 512;
+    assert!(pud_size == 0x8000000000); // one pud covers 512 GiB
+    
+    for (pd_idx, parent) in system.protection_domains.iter().enumerate() {
+        let mut has_table_mapped = false;
+        let mut pd_fake_tables: Vec<Vec<Option<Vec<Option<Vec<Option<Vec<u64>>>>>>>> = vec! [vec![None; 512]; 64];
+        let mut child_pds : Vec<usize> = vec![];
+
+        for (maybe_child_idx, maybe_child_pd) in system.protection_domains.iter().enumerate() {
+            if let Some(parent_idx) = maybe_child_pd.parent {
+                if parent_idx == pd_idx {
+                    has_table_mapped = true;
+                    let id = maybe_child_pd.id.unwrap() as usize;
+                    pd_fake_tables[id] = fake_tables[maybe_child_idx].clone();
+                    child_pds.push(id);
+                }
+            }
+        }
+
+        if !has_table_mapped {
+            continue;
+        }
+
+        fn recurse_pgd(pgd: &Vec<Option<Vec<Option<Vec<Option<Vec<u64>>>>>>>, curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+            let mut offset_table : [u64; 512] = [u64::MAX; 512];
+            let mut offset = curr_offset;
+            for i in 0..512 {
+                if let Some(pud) = &pgd[i] {
+                    // println!("[rcs] pud present at idx: {}", i);
+                    offset = recurse_pud(pud, offset, writer);
+                    offset_table[i] = offset - (512 * 8);
+                } 
+            }
+
+            println!("writing out puds at offset: 0x{:X}", offset);
+            for value in offset_table {
+                writer.write_all(&value.to_le_bytes()).unwrap(); // Write u64 as bytes
+            }
+            offset + (512 * 8)
+        }
+
+
+        fn recurse_pud(pud: &Vec<Option<Vec<Option<Vec<u64>>>>>, curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+            let mut offset_table : [u64; 512] = [u64::MAX; 512];
+            let mut offset = curr_offset;
+            for i in 0..512 {
+                if let Some(dir) = &pud[i] {
+                    // println!("[rcs] dir present at idx: {}", i);
+                    offset = recurse_dir(dir, offset, writer);
+                    offset_table[i] = offset - (512 * 8);
+                } 
+            }
+
+            println!("writing out dirs at offset: 0x{:X}", offset);
+            for value in offset_table {
+                writer.write_all(&value.to_le_bytes()).unwrap(); // Write u64 as bytes
+            }
+            offset + (512 * 8)
+        }
+
+        fn recurse_dir(dir: &Vec<Option<Vec<u64>>>, curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+            let mut offset_table : [u64; 512] = [u64::MAX; 512];
+            let mut offset = curr_offset;
+            for i in 0..512 {
+                if let Some(pt) = &dir[i] {
+                    // println!("[rcs] pt present at idx: {}", i);
+                    offset = recurse_pt(pt, offset, writer);
+                    offset_table[i] = offset - (512 * 8);
+                } 
+            }
+
+            println!("writing out pts at offset: 0x{:X}", offset);
+            for value in offset_table {
+                writer.write_all(&value.to_le_bytes()).unwrap(); // Write u64 as bytes
+            }
+            offset + (512 * 8)
+        }
+
+        fn recurse_pt(pt: &Vec<u64>, curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+            let mut cap_table : [u64; 512] = [u64::MAX; 512];
+            let offset = curr_offset;
+            for i in 0..512 {
+                if pt[i] != u64::MAX {
+                    // println!("[rcs] page present at idx: {}", i);
+                    cap_table[i] = pt[i];
+                } 
+            }
+
+            println!("writing out pages at offset: 0x{:X}", offset);
+            for value in cap_table {
+                writer.write_all(&value.to_le_bytes()).unwrap(); // Write u64 as bytes
+            }
+            offset + (512 * 8)
+        }
+
+
+        // We want to dump this data out to a file
+        let data_file = std::fs::File::create(format!("{}_data", parent.name)).unwrap();
+        let metadata_file = std::fs::File::create(format!("{}_metadata", parent.name)).unwrap();
+        let mut data_writer = std::io::BufWriter::new(data_file);
+        let mut metadata_writer = std::io::BufWriter::new(metadata_file);
+
+        let mut page_table_array : [u64; 64] = [u64::MAX; 64];
+        let mut offset = 0;
+
+        for i in child_pds {
+            offset = recurse_pgd(&pd_fake_tables[i], offset, &mut data_writer);
+            page_table_array[i] = offset - (512 * 8);
+        }
+
+        for value in page_table_array {
+            metadata_writer.write_all(&value.to_le_bytes());
+        }
+        metadata_writer.flush().unwrap();
+        data_writer.flush();
+
+        // now read metadata file (NOTE: none of this is necessary)
+        let file = std::fs::File::open(format!("{}_metadata", parent.name)).unwrap();
+        let mut reader = std::io::BufReader::new(file);
+        let mut buffer = Vec::new();
+
+        // Read the entire file into the buffer
+        reader.read_to_end(&mut buffer).unwrap();
+        // Ensure that the file size is a multiple of u64 size
+        let u64_size = 8;
+        println!("read bytes: {}", buffer.len());
+
+        // Convert buffer to Vec<u64>
+        let mut u64s = Vec::with_capacity(buffer.len() / u64_size);
+        for chunk in buffer.chunks(u64_size) {
+            // Convert bytes to u64 using little-endian encoding
+            let value = u64::from_le_bytes(chunk.try_into().expect("Failed to convert chunk to u64"));
+            u64s.push(value);
+        }
+
+        println!("OFFSET FOR CHILD WITH ID 1: 0x{:X}", u64s[1]);
+
+        // DECODING ===========
+        let decode_file = std::fs::File::open(format!("{}_data", parent.name)).unwrap();
+        let mut decode_reader = std::io::BufReader::new(decode_file);
+        let mut decode_buffer = Vec::new();
+
+        // Read the entire file into the buffer
+        decode_reader.read_to_end(&mut decode_buffer).unwrap();
+        println!("read bytes: {}", decode_buffer.len());
+
+        // Convert buffer to Vec<u64>
+        let mut decode_contents = Vec::with_capacity(decode_buffer.len() / u64_size);
+        for chunk in decode_buffer.chunks(u64_size) {
+            // Convert bytes to u64 using little-endian encoding
+            let value = u64::from_le_bytes(chunk.try_into().expect("Failed to convert chunk to u64"));
+            decode_contents.push(value);
+        }
+
+        fn decode(decode_contents: &Vec<u64>, offset: u64, vaddr: u64, level: usize) {
+            let page_size : u64 = 0x1000;
+            let pt_size = page_size * 512;
+            let d_size = pt_size * 512;
+            let pud_size = d_size * 512;
+            let sizes = vec![pud_size, d_size, pt_size];
+
+            if level != 3 {
+                for i in 0..512 {
+                    let o = (offset as usize / 8) + i;
+                    if decode_contents[o] != u64::MAX {
+                        decode(decode_contents, decode_contents[o], vaddr + (i as u64) * sizes[level], level + 1);
+                    }
+                }
+            } else {
+                for i in 0..512 {
+                    let o = (offset as usize / 8) + i;
+                    if decode_contents[o] != u64::MAX {
+                        println!("Mapped page at 0x{:X} with minted cap: 0x{:X}", vaddr + page_size * i as u64, decode_contents[o]);
+                    }
+                }
+
+            }
+        }
+
+        decode(&decode_contents, u64s[1], 0, 0);
+
+        for i in 0..64 {
+            for (pud_idx, pud) in pd_fake_tables[i].iter().enumerate() {
+                if pud.is_some() {
+                    println!("[ref] pud present at idx: {}", pud_idx);
+                    let pud_base = pud_idx as u64 * pud_size;
+                    for (d_idx, d) in pud.as_ref().unwrap().iter().enumerate() {
+                        if d.is_some() {
+                            println!("[ref] dir present at idx: {}", d_idx);
+                            let d_base = d_idx as u64 * d_size;
+                            for (pt_idx, pt) in d.as_ref().unwrap().iter().enumerate() {
+                                if pt.is_some() {
+                                    println!("[ref] pt present at idx: {}", pt_idx);
+                                    let pt_base = pt_idx as u64 * pt_size;
+                                    if pt.is_some() {
+                                        for (page_idx, page) in pt.as_ref().unwrap().iter().enumerate() {
+                                            let pg_idx = page_idx as u64 * page_size; 
+                                            if *page != u64::MAX {
+                                                println!("[ref] page present at idx: {}", page_idx);
+                                                // println!("Parent: {}, Child: {} Mapped page 0x{:X}", pd_names[pd_idx], pd_names[i], pg_idx + pt_base + d_base + pud_base);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 
     let mut badged_irq_caps: HashMap<&ProtectionDomain, Vec<u64>> = HashMap::new();
     for (notification_obj, pd) in zip(&notification_objs, &system.protection_domains) {
