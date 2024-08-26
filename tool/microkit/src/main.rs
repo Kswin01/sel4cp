@@ -432,6 +432,117 @@ pub fn pd_write_symbols(
     Ok(())
 }
 
+#[derive(Clone)]
+struct PGD {
+    puds: Vec<Option<PUD>>
+}
+
+impl PGD {
+
+    fn new() -> Self {
+        PGD {
+            puds: vec![None; 512]
+        }
+    }
+
+    fn recurse(&mut self , mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+        let mut offset_table : [u64; 512] = [u64::MAX; 512];
+        for i in 0..512 {
+            if let Some(pud) = &mut self.puds[i] {
+                curr_offset = pud.recurse(curr_offset, writer);
+                offset_table[i] = curr_offset - (512 * 8);
+            } 
+        }
+
+        for value in offset_table {
+            writer.write_all(&value.to_le_bytes()).unwrap(); 
+        }
+        curr_offset + (512 * 8)
+    }
+}
+    
+#[derive(Clone)]
+struct PUD {
+
+    dirs: Vec<Option<DIR>>
+}
+
+impl PUD {
+
+    fn new() -> Self {
+        PUD {
+            dirs: vec![None; 512]
+        }
+    }
+
+    fn recurse(&mut self , mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+        let mut offset_table : [u64; 512] = [u64::MAX; 512];
+        for i in 0..512 {
+            if let Some(dir) = &mut self.dirs[i] {
+                curr_offset = dir.recurse(curr_offset, writer);
+                offset_table[i] = curr_offset - (512 * 8);
+            } 
+        }
+
+        for value in offset_table {
+            writer.write_all(&value.to_le_bytes()).unwrap(); 
+        }
+        curr_offset + (512 * 8)
+    }
+}
+
+#[derive(Clone)]
+struct DIR {
+
+    pts: Vec<Option<PT>>
+}
+
+impl DIR {
+
+    fn new() -> Self {
+        DIR {
+            pts: vec![None; 512]
+        }
+    }
+
+    fn recurse(&mut self , mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+        let mut offset_table : [u64; 512] = [u64::MAX; 512];
+        for i in 0..512 {
+            if let Some(pt) = &mut self.pts[i] {
+                curr_offset = pt.recurse(curr_offset, writer);
+                offset_table[i] = curr_offset - (512 * 8);
+            } 
+        }
+
+        for value in offset_table {
+            writer.write_all(&value.to_le_bytes()).unwrap(); 
+        }
+        curr_offset + (512 * 8)
+    }
+}
+
+#[derive(Clone)]
+struct PT {
+    pages: Vec<u64>
+
+}
+
+impl PT {
+
+    fn new() -> Self {
+        PT {
+            pages: vec![u64::MAX; 512]
+        }
+    }
+
+    fn recurse(&mut self , curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+        for value in &self.pages {
+            writer.write_all(&value.to_le_bytes()).unwrap(); 
+        }
+        curr_offset + (512 * 8)
+    }
+}
+
 /// Determine the physical memory regions for an ELF file with a given
 /// alignment.
 ///
@@ -1987,22 +2098,25 @@ fn build_system(
 
     // Create an outline of the page table mappings for each pd. We can later populate this outline
     // with the corresponding frame caps should any pd have a parent
-    let mut all_pd_page_tables: Vec<Vec<Option<Vec<Option<Vec<Option<Vec<u64>>>>>>>> = vec! [vec![None; 512]; 64];
+    // NOTE: only one pgd per pd, could be an issue?
+    let mut all_pd_page_tables: Vec<PGD> = vec! [PGD::new(); 64];
+
     for i in 0..64 {
-        all_pd_page_tables[i][0] = Some(vec![None; 512]);
+        all_pd_page_tables[i].puds[0] = Some(PUD::new());
     }
     for (pd_idx, vaddr) in &all_pd_ds { 
         let d_idx = (vaddr >> 30) as usize & 0x1F;
-        if let Some(pud) = &mut all_pd_page_tables[*pd_idx][0] {
-            pud[d_idx] = Some(vec![None;512])
+        if let Some(pud) = &mut all_pd_page_tables[*pd_idx].puds[0] {
+            pud.dirs[d_idx] = Some(DIR::new());
         }
     }
+
     for (pd_idx, vaddr) in &all_pd_pts {
         let d_idx = (vaddr >> 30) as usize & 0x1F;
         let pt_idx = (vaddr >> 21) as usize & 0x1F;
-        if let Some(pud) = &mut all_pd_page_tables[*pd_idx][0] {
-            if let Some(pt) = &mut pud[d_idx] {
-                pt[pt_idx] = Some(vec![u64::MAX; 512]);
+        if let Some(pud) = &mut all_pd_page_tables[*pd_idx].puds[0] {
+            if let Some(dir) = &mut pud.dirs[d_idx] {
+                dir.pts[pt_idx] = Some(PT::new());
             }
         }
     }
@@ -2063,11 +2177,10 @@ fn build_system(
                                 let pt_idx = (vaddr >> 21) as usize & 0x1F;
                                 let page_idx = (vaddr >> 12) as usize & 0x1F;
 
-                                let a = all_pd_page_tables[maybe_child_idx][0].as_mut().unwrap();
-                                let b = a[d_idx].as_mut().unwrap();
-                                if b[pt_idx].is_some() {
+                                let page_table = &mut all_pd_page_tables[maybe_child_idx].puds[0].as_mut().unwrap().dirs[d_idx].as_mut().unwrap().pts[pt_idx];
+                                if page_table.is_some() {
                                     let minted_cap = base_frame_cap + mr_idx as u64;
-                                    b[pt_idx].as_mut().unwrap()[page_idx] = minted_cap;
+                                    page_table.as_mut().unwrap().pages[page_idx] = minted_cap;
                                     println!("cap name: {} frame cap: 0x{:X} minted cap: 0x{:X} vaddr: 0x{:X}", cap_address_names.get(&cap).unwrap(), mr_pages[child_mr][0].cap_addr + mr_idx as u64, minted_cap, vaddr);
                                 } else {
                                     panic!("[{}] Failed to map page on pt: {} region name: {}", pd_names[pd_idx], pt_idx, child_mr.name);
@@ -2086,7 +2199,7 @@ fn build_system(
     }
 
     for (pd_idx, parent) in system.protection_domains.iter().enumerate() {
-        let mut parent_pd_view: Vec<Vec<Option<Vec<Option<Vec<Option<Vec<u64>>>>>>>> = vec! [vec![None; 512]; 64];
+        let mut parent_pd_view: Vec<PGD> = vec! [PGD::new(); 64];
         let mut child_pds : Vec<usize> = vec![];
 
         for (maybe_child_idx, maybe_child_pd) in system.protection_domains.iter().enumerate() {
@@ -2103,60 +2216,6 @@ fn build_system(
             continue;
         }
 
-        fn recurse_pgd(pgd: &Vec<Option<Vec<Option<Vec<Option<Vec<u64>>>>>>>, mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
-            let mut offset_table : [u64; 512] = [u64::MAX; 512];
-            for i in 0..512 {
-                if let Some(pud) = &pgd[i] {
-                    curr_offset = recurse_pud(pud, curr_offset, writer);
-                    offset_table[i] = curr_offset - (512 * 8);
-                } 
-            }
-
-            for value in offset_table {
-                writer.write_all(&value.to_le_bytes()).unwrap(); 
-            }
-            curr_offset + (512 * 8)
-        }
-
-
-        fn recurse_pud(pud: &Vec<Option<Vec<Option<Vec<u64>>>>>, mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
-            let mut offset_table : [u64; 512] = [u64::MAX; 512];
-            for i in 0..512 {
-                if let Some(dir) = &pud[i] {
-                    curr_offset = recurse_dir(dir, curr_offset, writer);
-                    offset_table[i] = curr_offset - (512 * 8);
-                } 
-            }
-
-            for value in offset_table {
-                writer.write_all(&value.to_le_bytes()).unwrap(); 
-            }
-            curr_offset + (512 * 8)
-        }
-
-        fn recurse_dir(dir: &Vec<Option<Vec<u64>>>, mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
-            let mut offset_table : [u64; 512] = [u64::MAX; 512];
-            for i in 0..512 {
-                if let Some(pt) = &dir[i] {
-                    curr_offset = recurse_pt(pt, curr_offset, writer);
-                    offset_table[i] = curr_offset - (512 * 8);
-                } 
-            }
-
-            for value in offset_table {
-                writer.write_all(&value.to_le_bytes()).unwrap();
-            }
-            curr_offset + (512 * 8)
-        }
-
-        fn recurse_pt(pt: &Vec<u64>, curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
-            for value in pt{
-                writer.write_all(&value.to_le_bytes()).unwrap();
-            }
-            curr_offset + (512 * 8)
-        }
-
-
         // Finally, we dump the blob and metadata out to an object
         let data_file = std::fs::File::create(format!("{}_data", parent.name)).unwrap();
         let metadata_file = std::fs::File::create(format!("{}_metadata", parent.name)).unwrap();
@@ -2167,7 +2226,8 @@ fn build_system(
         let mut offset = 0;
 
         for i in child_pds {
-            offset = recurse_pgd(&parent_pd_view[i], offset, &mut data_writer);
+            offset = parent_pd_view[i].recurse(offset, &mut data_writer);
+            // offset = recurse(&parent_pd_view[i], offset, 0, &mut data_writer);
             page_table_array[i] = offset - (512 * 8);
         }
 
