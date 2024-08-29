@@ -27,7 +27,6 @@ typedef seL4_MessageInfo_t microkit_msginfo;
 #define BASE_TCB_CAP 202
 #define BASE_VM_TCB_CAP 266
 #define BASE_VCPU_CAP 330
-#define BASE_FRAME_CAP 394
 
 #define MICROKIT_MAX_CHANNELS 62
 #define MICROKIT_MAX_CHANNEL_ID (MICROKIT_MAX_CHANNELS - 1)
