@@ -434,58 +434,55 @@ pub fn pd_write_symbols(
 
 #[derive(Clone)]
 struct PGD {
-    puds: Vec<Option<PUD>>
+    puds: Vec<Option<PUD>>,
 }
 
 impl PGD {
-
     fn new() -> Self {
         PGD {
-            puds: vec![None; 512]
+            puds: vec![None; 512],
         }
     }
 
-    fn recurse(&mut self , mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
-        let mut offset_table : [u64; 512] = [u64::MAX; 512];
+    fn recurse(&mut self, mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+        let mut offset_table: [u64; 512] = [u64::MAX; 512];
         for i in 0..512 {
             if let Some(pud) = &mut self.puds[i] {
                 curr_offset = pud.recurse(curr_offset, writer);
                 offset_table[i] = curr_offset - (512 * 8);
-            } 
+            }
         }
 
         for value in offset_table {
-            writer.write_all(&value.to_le_bytes()).unwrap(); 
+            writer.write_all(&value.to_le_bytes()).unwrap();
         }
         curr_offset + (512 * 8)
     }
 }
-    
+
 #[derive(Clone)]
 struct PUD {
-
-    dirs: Vec<Option<DIR>>
+    dirs: Vec<Option<DIR>>,
 }
 
 impl PUD {
-
     fn new() -> Self {
         PUD {
-            dirs: vec![None; 512]
+            dirs: vec![None; 512],
         }
     }
 
-    fn recurse(&mut self , mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
-        let mut offset_table : [u64; 512] = [u64::MAX; 512];
+    fn recurse(&mut self, mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+        let mut offset_table: [u64; 512] = [u64::MAX; 512];
         for i in 0..512 {
             if let Some(dir) = &mut self.dirs[i] {
                 curr_offset = dir.recurse(curr_offset, writer);
                 offset_table[i] = curr_offset - (512 * 8);
-            } 
+            }
         }
 
         for value in offset_table {
-            writer.write_all(&value.to_le_bytes()).unwrap(); 
+            writer.write_all(&value.to_le_bytes()).unwrap();
         }
         curr_offset + (512 * 8)
     }
@@ -493,29 +490,27 @@ impl PUD {
 
 #[derive(Clone)]
 struct DIR {
-
-    pts: Vec<Option<PT>>
+    pts: Vec<Option<PT>>,
 }
 
 impl DIR {
-
     fn new() -> Self {
         DIR {
-            pts: vec![None; 512]
+            pts: vec![None; 512],
         }
     }
 
-    fn recurse(&mut self , mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
-        let mut offset_table : [u64; 512] = [u64::MAX; 512];
+    fn recurse(&mut self, mut curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+        let mut offset_table: [u64; 512] = [u64::MAX; 512];
         for i in 0..512 {
             if let Some(pt) = &mut self.pts[i] {
                 curr_offset = pt.recurse(curr_offset, writer);
                 offset_table[i] = curr_offset - (512 * 8);
-            } 
+            }
         }
 
         for value in offset_table {
-            writer.write_all(&value.to_le_bytes()).unwrap(); 
+            writer.write_all(&value.to_le_bytes()).unwrap();
         }
         curr_offset + (512 * 8)
     }
@@ -523,21 +518,19 @@ impl DIR {
 
 #[derive(Clone)]
 struct PT {
-    pages: Vec<u64>
-
+    pages: Vec<u64>,
 }
 
 impl PT {
-
     fn new() -> Self {
         PT {
-            pages: vec![u64::MAX; 512]
+            pages: vec![u64::MAX; 512],
         }
     }
 
-    fn recurse(&mut self , curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
+    fn recurse(&mut self, curr_offset: u64, writer: &mut BufWriter<std::fs::File>) -> u64 {
         for value in &self.pages {
-            writer.write_all(&value.to_le_bytes()).unwrap(); 
+            writer.write_all(&value.to_le_bytes()).unwrap();
         }
         curr_offset + (512 * 8)
     }
@@ -844,7 +837,7 @@ fn emulate_kernel_boot(
 
 fn build_system(
     config: &Config,
-    pd_elf_files: &Vec<ElfFile>,
+    pd_elf_files: &mut Vec<ElfFile>,
     kernel_elf: &ElfFile,
     monitor_elf: &ElfFile,
     system: &SystemDescription,
@@ -878,8 +871,8 @@ fn build_system(
     // from this area, which can then be made available to the appropriate
     // protection domains
     let mut pd_elf_size = 0;
-    for pd_elf in pd_elf_files {
-        for r in phys_mem_regions_from_elf(pd_elf, config.minimum_page_size) {
+    for pd_elf in pd_elf_files.iter_mut() {
+        for r in phys_mem_regions_from_elf(&pd_elf, config.minimum_page_size) {
             pd_elf_size += r.size();
         }
     }
@@ -1325,6 +1318,7 @@ fn build_system(
                 phys_addr: Some(phys_addr_next),
                 text_pos: None,
                 kind: SysMemoryRegionKind::Elf,
+                backed: true,
             };
             phys_addr_next += aligned_size;
 
@@ -1362,6 +1356,7 @@ fn build_system(
             phys_addr: None,
             text_pos: None,
             kind: SysMemoryRegionKind::Stack,
+            backed: true
         };
 
         let stack_map = SysMap {
@@ -1451,7 +1446,7 @@ fn build_system(
     }
 
     for mr in &all_mrs {
-        if mr.phys_addr.is_some() {
+        if mr.phys_addr.is_some() || !mr.backed {
             continue;
         }
 
@@ -1461,6 +1456,7 @@ fn build_system(
                 "Page({} {}): MR={} #{}",
                 page_size_human, page_size_label, mr.name, idx
             );
+
             match mr.page_size as PageSize {
                 PageSize::Small => small_page_names.push(page_str),
                 PageSize::Large => large_page_names.push(page_str),
@@ -1480,7 +1476,8 @@ fn build_system(
     let mut page_large_idx = 0;
 
     for mr in &all_mrs {
-        if mr.phys_addr.is_some() {
+        if mr.phys_addr.is_some() || !mr.backed {
+            mr_pages.insert(mr, vec![]);
             continue;
         }
 
@@ -1919,11 +1916,12 @@ fn build_system(
         for map_set in [&pd.maps, &pd_extra_maps[pd]] {
             for mp in map_set {
                 let mr = all_mr_by_name[mp.mr.as_str()];
+                if !mr.backed {
+                    continue
+                }
+
                 let mut rights: u64 = Rights::None as u64;
-                let mut attrs = match config.arch {
-                    Arch::Aarch64 => ArmVmAttributes::ParityEnabled as u64,
-                    Arch::Riscv64 => 0,
-                };
+                let mut attrs = ArmVmAttributes::ParityEnabled as u64;
                 if mp.perms & SysMapPerms::Read as u8 != 0 {
                     rights |= Rights::Read as u64;
                 }
@@ -1931,30 +1929,14 @@ fn build_system(
                     rights |= Rights::Write as u64;
                 }
                 if mp.perms & SysMapPerms::Execute as u8 == 0 {
-                    match config.arch {
-                        Arch::Aarch64 => attrs |= ArmVmAttributes::ExecuteNever as u64,
-                        Arch::Riscv64 => attrs |= RiscvVmAttributes::ExecuteNever as u64,
-                    }
+                    attrs |= ArmVmAttributes::ExecuteNever as u64;
                 }
                 if mp.cached {
-                    match config.arch {
-                        Arch::Aarch64 => attrs |= ArmVmAttributes::Cacheable as u64,
-                        Arch::Riscv64 => {}
-                    }
+                    attrs |= ArmVmAttributes::Cacheable as u64;
                 }
 
                 assert!(!mr_pages[mr].is_empty());
                 assert!(util::objects_adjacent(&mr_pages[mr]));
-
-                for page_idx in 0..mr_pages[mr].len() {
-                    let vaddr = mp.vaddr + mr.page_bytes() * page_idx as u64;
-                    let d_idx = (vaddr >> 30) as usize & 0x1F;
-                    let pt_idx = (vaddr >> 21) as usize & 0x1F;
-                    let page_idx = (vaddr >> 12) as usize & 0x1F;
-
-                    fake_tables[pd_idx][0].as_mut().unwrap()[d_idx].as_mut().unwrap()[pt_idx].as_mut().unwrap()[page_idx] = true;
-                    println!("Installed frame: 0x{:X} onto (d: {}) (pt: {}): ", vaddr, d_idx, pt_idx);
-                }
 
                 let mut invocation = Invocation::new(
                     config,
@@ -1969,6 +1951,7 @@ fn build_system(
                         badge: 0,
                     },
                 );
+
                 invocation.repeat(
                     mr_pages[mr].len() as u32,
                     InvocationArgs::CnodeMint {
@@ -2016,10 +1999,7 @@ fn build_system(
         for mp in &vm.maps {
             let mr = all_mr_by_name[mp.mr.as_str()];
             let mut rights: u64 = Rights::None as u64;
-            let mut attrs = match config.arch {
-                Arch::Aarch64 => ArmVmAttributes::ParityEnabled as u64,
-                Arch::Riscv64 => 0,
-            };
+            let mut attrs = ArmVmAttributes::ParityEnabled as u64;
             if mp.perms & SysMapPerms::Read as u8 != 0 {
                 rights |= Rights::Read as u64;
             }
@@ -2027,16 +2007,10 @@ fn build_system(
                 rights |= Rights::Write as u64;
             }
             if mp.perms & SysMapPerms::Execute as u8 == 0 {
-                match config.arch {
-                    Arch::Aarch64 => attrs |= ArmVmAttributes::ExecuteNever as u64,
-                    Arch::Riscv64 => attrs |= RiscvVmAttributes::ExecuteNever as u64,
-                }
+                attrs |= ArmVmAttributes::ExecuteNever as u64;
             }
             if mp.cached {
-                match config.arch {
-                    Arch::Aarch64 => attrs |= ArmVmAttributes::Cacheable as u64,
-                    Arch::Riscv64 => {}
-                }
+                attrs |= ArmVmAttributes::Cacheable as u64;
             }
 
             assert!(!mr_pages[mr].is_empty());
@@ -2099,12 +2073,12 @@ fn build_system(
     // Create an outline of the page table mappings for each pd. We can later populate this outline
     // with the corresponding frame caps should any pd have a parent
     // NOTE: only one pgd per pd, could be an issue?
-    let mut all_pd_page_tables: Vec<PGD> = vec! [PGD::new(); 64];
+    let mut all_pd_page_tables: Vec<PGD> = vec![PGD::new(); 64];
 
     for i in 0..64 {
         all_pd_page_tables[i].puds[0] = Some(PUD::new());
     }
-    for (pd_idx, vaddr) in &all_pd_ds { 
+    for (pd_idx, vaddr) in &all_pd_ds {
         let d_idx = (vaddr >> 30) as usize & 0x1F;
         if let Some(pud) = &mut all_pd_page_tables[*pd_idx].puds[0] {
             pud.dirs[d_idx] = Some(DIR::new());
@@ -2133,9 +2107,6 @@ fn build_system(
         }
     }
     sorted_mp_mr_pairs.sort_by(|a, b| a.1.name.cmp(&b.1.name));
-    for p in &sorted_mp_mr_pairs {
-        println!("{}", p.1.name);
-    }
     let mut base_frame_cap = BASE_FRAME_CAP;
 
     // If a pd has a parent, we mint the child's frame caps into the parent's vspace
@@ -2149,31 +2120,40 @@ fn build_system(
                         let child_mr = mp_mr_pair.1;
                         let name = &mp_mr_pair.2;
                         if name.contains(&maybe_child_pd.name) {
-                            println!("parent: {} wants to map this child memory regions: {}", parent.name, child_mr.name);
+                            println!(
+                                "parent: {} wants to map this child memory regions: {}",
+                                parent.name, child_mr.name
+                            );
 
                             println!("we have {} frames", mr_pages[child_mr].len());
-                            let mut invocation = Invocation::new(InvocationArgs::CnodeMint{
-                                cnode: cnode_objs[pd_idx].cap_addr,
-                                dest_index: base_frame_cap,
-                                dest_depth: PD_CAP_BITS,
-                                src_root: root_cnode_cap,
-                                src_obj: mr_pages[child_mr][0].cap_addr, // the memory region has multiple
-                                // pages, we're taking the first one at 0x20300
-                                src_depth: kernel_config.cap_address_bits,
-                                rights: (Rights::Read as u64 | Rights::Write as u64),
-                                badge: 0,
-                            });
+                            let mut invocation = Invocation::new(
+                                config,
+                                InvocationArgs::CnodeMint {
+                                    cnode: cnode_objs[pd_idx].cap_addr,
+                                    dest_index: base_frame_cap,
+                                    dest_depth: PD_CAP_BITS,
+                                    src_root: root_cnode_cap,
+                                    src_obj: mr_pages[child_mr][0].cap_addr, // the memory region has multiple
+                                    // pages, we're taking the first one at 0x20300
+                                    src_depth: config.cap_address_bits,
+                                    rights: (Rights::Read as u64 | Rights::Write as u64),
+                                    badge: 0,
+                                },
+                            );
 
-                            invocation.repeat(mr_pages[child_mr].len() as u32, InvocationArgs::CnodeMint{
-                                cnode: 0,
-                                dest_index: 1,
-                                dest_depth: 0,
-                                src_root: 0,
-                                src_obj: 1,
-                                src_depth: 0,
-                                rights: 0,
-                                badge: 0,
-                            });
+                            invocation.repeat(
+                                mr_pages[child_mr].len() as u32,
+                                InvocationArgs::CnodeMint {
+                                    cnode: 0,
+                                    dest_index: 1,
+                                    dest_depth: 0,
+                                    src_root: 0,
+                                    src_obj: 1,
+                                    src_depth: 0,
+                                    rights: 0,
+                                    badge: 0,
+                                },
+                            );
 
                             for mr_idx in 0..mr_pages[child_mr].len() {
                                 let cap = mr_pages[child_mr][mr_idx].cap_addr;
@@ -2183,13 +2163,22 @@ fn build_system(
                                 let pt_idx = (vaddr >> 21) as usize & 0x1F;
                                 let page_idx = (vaddr >> 12) as usize & 0x1F;
 
-                                let page_table = &mut all_pd_page_tables[maybe_child_idx].puds[0].as_mut().unwrap().dirs[d_idx].as_mut().unwrap().pts[pt_idx];
+                                let page_table = &mut all_pd_page_tables[maybe_child_idx].puds[0]
+                                    .as_mut()
+                                    .unwrap()
+                                    .dirs[d_idx]
+                                    .as_mut()
+                                    .unwrap()
+                                    .pts[pt_idx];
                                 if page_table.is_some() {
                                     let minted_cap = base_frame_cap + mr_idx as u64;
                                     page_table.as_mut().unwrap().pages[page_idx] = minted_cap;
                                     println!("cap name: {} frame cap: 0x{:X} minted cap: 0x{:X} vaddr: 0x{:X}", cap_address_names.get(&cap).unwrap(), mr_pages[child_mr][0].cap_addr + mr_idx as u64, minted_cap, vaddr);
                                 } else {
-                                    panic!("[{}] Failed to map page on pt: {} region name: {}", pd_names[pd_idx], pt_idx, child_mr.name);
+                                    panic!(
+                                        "[{}] Failed to map page on pt: {} region name: {}",
+                                        pd_names[pd_idx], pt_idx, child_mr.name
+                                    );
                                 }
                             }
 
@@ -2198,15 +2187,14 @@ fn build_system(
                             system_invocations.push(invocation);
                         }
                     }
-                    
                 }
             }
         }
     }
 
     for (pd_idx, parent) in system.protection_domains.iter().enumerate() {
-        let mut parent_pd_view: Vec<PGD> = vec! [PGD::new(); 64];
-        let mut child_pds : Vec<usize> = vec![];
+        let mut parent_pd_view: Vec<PGD> = vec![PGD::new(); 64];
+        let mut child_pds: Vec<usize> = vec![];
 
         for (maybe_child_idx, maybe_child_pd) in system.protection_domains.iter().enumerate() {
             if let Some(parent_idx) = maybe_child_pd.parent {
@@ -2217,7 +2205,7 @@ fn build_system(
                 }
             }
         }
- 
+
         if child_pds.is_empty() {
             continue;
         }
@@ -2228,7 +2216,7 @@ fn build_system(
         let mut data_writer = std::io::BufWriter::new(data_file);
         let mut metadata_writer = std::io::BufWriter::new(metadata_file);
 
-        let mut page_table_array : [u64; 64] = [u64::MAX; 64];
+        let mut page_table_array: [u64; 64] = [u64::MAX; 64];
         let mut offset = 0;
 
         for i in child_pds {
@@ -2254,7 +2242,8 @@ fn build_system(
 
         let mut u64s = Vec::with_capacity(buffer.len() / u64_size);
         for chunk in buffer.chunks(u64_size) {
-            let value = u64::from_le_bytes(chunk.try_into().expect("Failed to convert chunk to u64"));
+            let value =
+                u64::from_le_bytes(chunk.try_into().expect("Failed to convert chunk to u64"));
             u64s.push(value);
         }
 
@@ -2266,7 +2255,8 @@ fn build_system(
 
         let mut decode_contents = Vec::with_capacity(decode_buffer.len() / u64_size);
         for chunk in decode_buffer.chunks(u64_size) {
-            let value = u64::from_le_bytes(chunk.try_into().expect("Failed to convert chunk to u64"));
+            let value =
+                u64::from_le_bytes(chunk.try_into().expect("Failed to convert chunk to u64"));
             decode_contents.push(value);
         }
 
@@ -2277,31 +2267,44 @@ fn build_system(
                 for i in 0..512 {
                     let o = (offset as usize / 8) + i;
                     if decode_contents[o] != u64::MAX {
-                        decode(decode_contents, decode_contents[o], vaddr + (i as u64) * sizes[level], level + 1);
+                        decode(
+                            decode_contents,
+                            decode_contents[o],
+                            vaddr + (i as u64) * sizes[level],
+                            level + 1,
+                        );
                     }
                 }
             } else {
                 for i in 0..512 {
                     let o = (offset as usize / 8) + i;
                     if decode_contents[o] != u64::MAX {
-                        println!("Mapped page at 0x{:X} with minted cap: 0x{:X}", vaddr + 0x1000 * i as u64, decode_contents[o]);
+                        println!(
+                            "Mapped page at 0x{:X} with minted cap: 0x{:X}",
+                            vaddr + 0x1000 * i as u64,
+                            decode_contents[o]
+                        );
                     }
                 }
-
             }
         }
 
         decode(&decode_contents, u64s[1], 0, 0);
         // DECODING ==========================================================================
-        
+
         // patch the data in
         let elf = &mut pd_elf_files[pd_idx];
 
-        let table_metadata : Vec<u8> = page_table_array.iter().flat_map(|&value| value.to_le_bytes()).collect();
-        let table_data : Vec<u8> = decode_contents.iter().flat_map(|&value| value.to_le_bytes()).collect();
+        let table_metadata: Vec<u8> = page_table_array
+            .iter()
+            .flat_map(|&value| value.to_le_bytes())
+            .collect();
+        let table_data: Vec<u8> = decode_contents
+            .iter()
+            .flat_map(|&value| value.to_le_bytes())
+            .collect();
         elf.write_symbol("table_metadata", &table_metadata)?;
         elf.write_symbol("table_data", &table_data)?;
-
     }
 
     let mut badged_irq_caps: HashMap<&ProtectionDomain, Vec<u64>> = HashMap::new();
@@ -3685,7 +3688,7 @@ fn main() -> Result<(), String> {
     loop {
         built_system = build_system(
             &kernel_config,
-            &pd_elf_files,
+            &mut pd_elf_files,
             &kernel_elf,
             &monitor_elf,
             &system,
