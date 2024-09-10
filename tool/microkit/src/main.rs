@@ -60,7 +60,7 @@ const BASE_FRAME_CAP: u64 = BASE_VCPU_CAP + 64;
 
 const MAX_SYSTEM_INVOCATION_SIZE: u64 = util::mb(128);
 
-const PD_CAP_SIZE: u64 = 512;
+const PD_CAP_SIZE: u64 = 4096;
 const PD_CAP_BITS: u64 = PD_CAP_SIZE.ilog2() as u64;
 const PD_SCHEDCONTEXT_SIZE: u64 = 1 << 8;
 
@@ -504,8 +504,15 @@ impl DIR {
         let mut offset_table: [u64; 512] = [u64::MAX; 512];
         for i in 0..512 {
             if let Some(pt) = &mut self.pts[i] {
-                curr_offset = pt.recurse(curr_offset, writer);
-                offset_table[i] = curr_offset - (512 * 8);
+                if pt.large_page == u64::MAX {
+                    curr_offset = pt.recurse(curr_offset, writer);
+                    offset_table[i] = curr_offset - (512 * 8);
+                } else {
+                    curr_offset += 8;
+                    // we mark the top bit to signal to the pd that this is a large page
+                    offset_table[i] = pt.large_page | (1 << 63);
+                    println!("Large page encountered!");
+                }
             }
         }
 
@@ -518,6 +525,7 @@ impl DIR {
 
 #[derive(Clone)]
 struct PT {
+    large_page: u64,
     pages: Vec<u64>,
 }
 
@@ -525,6 +533,7 @@ impl PT {
     fn new() -> Self {
         PT {
             pages: vec![u64::MAX; 512],
+            large_page: u64::MAX,
         }
     }
 
@@ -1917,7 +1926,7 @@ fn build_system(
             for mp in map_set {
                 let mr = all_mr_by_name[mp.mr.as_str()];
                 if !mr.backed {
-                    continue
+                    continue;
                 }
 
                 let mut rights: u64 = Rights::None as u64;
@@ -2133,28 +2142,14 @@ fn build_system(
                                     dest_index: base_frame_cap,
                                     dest_depth: PD_CAP_BITS,
                                     src_root: root_cnode_cap,
-                                    src_obj: mr_pages[child_mr][0].cap_addr, // the memory region has multiple
-                                    // pages, we're taking the first one at 0x20300
+                                    src_obj: mr_pages[child_mr][0].cap_addr,
                                     src_depth: config.cap_address_bits,
                                     rights: (Rights::Read as u64 | Rights::Write as u64),
                                     badge: 0,
                                 },
                             );
 
-                            invocation.repeat(
-                                mr_pages[child_mr].len() as u32,
-                                InvocationArgs::CnodeMint {
-                                    cnode: 0,
-                                    dest_index: 1,
-                                    dest_depth: 0,
-                                    src_root: 0,
-                                    src_obj: 1,
-                                    src_depth: 0,
-                                    rights: 0,
-                                    badge: 0,
-                                },
-                            );
-
+                            let mut is_large_page = false;
                             for mr_idx in 0..mr_pages[child_mr].len() {
                                 let cap = mr_pages[child_mr][mr_idx].cap_addr;
 
@@ -2175,14 +2170,35 @@ fn build_system(
                                     page_table.as_mut().unwrap().pages[page_idx] = minted_cap;
                                     println!("cap name: {} frame cap: 0x{:X} minted cap: 0x{:X} vaddr: 0x{:X}", cap_address_names.get(&cap).unwrap(), mr_pages[child_mr][0].cap_addr + mr_idx as u64, minted_cap, vaddr);
                                 } else {
-                                    panic!(
-                                        "[{}] Failed to map page on pt: {} region name: {}",
-                                        pd_names[pd_idx], pt_idx, child_mr.name
-                                    );
+                                    assert!(mr_idx == 0);
+                                    println!("LARGE PAGE: cap name: {} frame cap: 0x{:X} minted cap: 0x{:X} vaddr: 0x{:X}", cap_address_names.get(&cap).unwrap(), mr_pages[child_mr][0].cap_addr + mr_idx as u64, base_frame_cap, vaddr);
+                                    *page_table = Some(PT::new());
+                                    page_table.as_mut().unwrap().large_page = base_frame_cap;
+                                    is_large_page = true;
+                                    break;
                                 }
                             }
 
-                            base_frame_cap += mr_pages[child_mr].len() as u64;
+                            if !is_large_page {
+                                invocation.repeat(
+                                    mr_pages[child_mr].len() as u32,
+                                    InvocationArgs::CnodeMint {
+                                        cnode: 0,
+                                        dest_index: 1,
+                                        dest_depth: 0,
+                                        src_root: 0,
+                                        src_obj: 1,
+                                        src_depth: 0,
+                                        rights: 0,
+                                        badge: 0,
+                                    },
+                                );
+
+                                base_frame_cap += mr_pages[child_mr].len() as u64;
+                            } else {
+                                base_frame_cap += 1;
+                                assert!(mr_pages[child_mr].len() == 1);
+                            }
 
                             system_invocations.push(invocation);
                         }
@@ -2289,7 +2305,6 @@ fn build_system(
             }
         }
 
-        decode(&decode_contents, u64s[1], 0, 0);
         // DECODING ==========================================================================
 
         // patch the data in
