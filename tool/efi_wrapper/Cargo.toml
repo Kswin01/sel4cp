@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 log = "0.4.22"
 uefi = { version = "0.31.0", features = ["logger", "panic_handler"] }
+const-str = "0.5.7"
