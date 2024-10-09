@@ -11,6 +11,11 @@ use crate::MemoryRegion;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
+use goblin::pe::{
+    section_table::{IMAGE_SCN_MEM_EXECUTE, IMAGE_SCN_CNT_INITIALIZED_DATA, IMAGE_SCN_MEM_READ},
+    PE,
+};
+use ifrit::writer::{PEWriter, Section};
 
 const PAGE_TABLE_SIZE: usize = 4096;
 
@@ -312,7 +317,7 @@ impl<'a> Loader<'a> {
         }
     }
 
-    pub fn write_image(&self, path: &Path) {
+    pub fn write_image(&self, path: &Path, file_type: &str, uefi_wrapper_path: &Path) {
         let loader_file = match File::create(path) {
             Ok(file) => file,
             Err(e) => panic!("Could not create '{}': {}", path.display(), e),
@@ -346,6 +351,42 @@ impl<'a> Loader<'a> {
         }
 
         loader_buf.flush().unwrap();
+
+        if (file_type == "EFI") {
+            println!("We are compiling an efi image. This is the max capacity of our BufWriter: {}", loader_buf.capacity());
+            // Get the pre-compiled UEFI wrapper for the appropriate board.
+            let uefi_wrapper: Vec<u8> = std::fs::read(uefi_wrapper_path).unwrap();
+            let uefi_wrapper = &uefi_wrapper[..];
+            // Parse the UEFI wrapper using goblin.
+            let pe = PE::parse(uefi_wrapper).unwrap();
+            let mut pe_writer = PEWriter::new(pe).expect("Failed to create a wrapper");
+
+            // We will call the section ".mloader" to avoid conflicts with the section already called
+            // ".loader" in the EFI image.
+            let section_name: [u8; 8] = *b".mloader";
+
+            // @kwinter: This needs to be fixed. The internal buffer can only hold so much of the
+            // loader image. Is there any good way to get around this?
+            let loader_img = std::fs::read(path).expect("failed to read loader image");
+
+            // Using "ifrit" to append a section to the UEFI wrapper. Labellign this as initialized data and readable.
+            pe_writer
+            .insert_section(
+                Section::new(
+                    &section_name,
+                    Some(loader_img),
+                    IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ,
+                )
+                .expect("Failed to create a section"),
+            )
+            .unwrap();
+
+            let new_pe = pe_writer.write_into().unwrap();
+            std::fs::write(path, &new_pe[..]).unwrap();
+        }
+        // else if (file_type == "BIN") {
+        //     loader_buf.flush().unwrap();
+        // }
     }
 
     fn riscv64_setup_pagetables(

@@ -2976,7 +2976,7 @@ fn write_report<W: std::io::Write>(
 }
 
 fn print_usage(available_boards: &[String]) {
-    println!("usage: microkit [-h] [-o OUTPUT] [-r REPORT] --board {{{}}} --config CONFIG [--search-path [SEARCH_PATH ...]] system", available_boards.join(","))
+    println!("usage: microkit [-h] [-o OUTPUT] [-r REPORT] --board {{{}}} --config CONFIG [--search-path [SEARCH_PATH ...]] system --image-type [EFI,BIN]", available_boards.join(","))
 }
 
 fn print_help(available_boards: &[String]) {
@@ -2990,6 +2990,7 @@ fn print_help(available_boards: &[String]) {
     println!("  --board {{{}}}", available_boards.join(","));
     println!("  --config CONFIG");
     println!("  --search-path [SEARCH_PATH ...]");
+    println!("  --image-type [EFI,BIN]")
 }
 
 struct Args<'a> {
@@ -2998,8 +2999,9 @@ struct Args<'a> {
     config: &'a str,
     report: &'a str,
     output: &'a str,
+    image_type: &'a str,
     search_paths: Vec<&'a String>,
-}
+ }
 
 impl<'a> Args<'a> {
     pub fn parse(args: &'a [String], available_boards: &[String]) -> Args<'a> {
@@ -3011,6 +3013,8 @@ impl<'a> Args<'a> {
         let mut system = None;
         let mut board = None;
         let mut config = None;
+        // @kwinter: Do we want to make this a default arg?
+        let mut image_type = None;
 
         if args.len() <= 1 {
             print_usage(available_boards);
@@ -3066,6 +3070,16 @@ impl<'a> Args<'a> {
                         std::process::exit(1);
                     }
                 }
+                "--image-type" => {
+                    in_search_path = false;
+                    if i < args.len() - 1 {
+                        image_type = Some(&args[i + 1]);
+                        i += 1;
+                    } else {
+                        eprintln!("microkit: error: argument --image-type: expected one argument");
+                        std::process::exit(1);
+                    }
+                }
                 "--search-path" => {
                     in_search_path = true;
                 }
@@ -3101,6 +3115,11 @@ impl<'a> Args<'a> {
         if config.is_none() {
             missing_args.push("--config");
         }
+        if image_type.is_none() {
+            missing_args.push("--image-type")
+        }
+        // @kwinter: figure out if we want to default the image type to bin, or
+        // make it a required arg.
 
         if !missing_args.is_empty() {
             print_usage(available_boards);
@@ -3117,6 +3136,7 @@ impl<'a> Args<'a> {
             config: config.unwrap(),
             report,
             output,
+            image_type: image_type.unwrap(),
             search_paths,
         }
     }
@@ -3207,6 +3227,11 @@ fn main() -> Result<(), String> {
     let loader_elf_path = elf_path.join("loader.elf");
     let kernel_elf_path = elf_path.join("sel4.elf");
     let monitor_elf_path = elf_path.join("monitor.elf");
+    let uefi_wrapper_path = sdk_dir
+        .join("board")
+        .join(args.board)
+        .join("uefi_wrapper")
+        .join("uefi_wrapper.efi");
 
     let kernel_config_path = sdk_dir
         .join("board")
@@ -3246,6 +3271,13 @@ fn main() -> Result<(), String> {
         eprintln!(
             "Error: kernel configuration file '{}' does not exist",
             kernel_config_path.display()
+        );
+        std::process::exit(1);
+    }
+    if !uefi_wrapper_path.exists() {
+        eprintln!(
+            "Error: UEFI wrapper file '{}' does not exist",
+            uefi_wrapper_path.display()
         );
         std::process::exit(1);
     }
@@ -3600,7 +3632,7 @@ fn main() -> Result<(), String> {
         built_system.reserved_region,
         loader_regions,
     );
-    loader.write_image(Path::new(args.output));
+    loader.write_image(Path::new(args.output), "EFI", Path::new(&uefi_wrapper_path));
 
     Ok(())
 }

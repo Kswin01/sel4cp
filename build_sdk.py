@@ -540,6 +540,29 @@ def build_lib_component(
         copy(p, dest)
         dest.chmod(0o744)
 
+def build_uefi_component(
+    root_dir: Path,
+    board: BoardInfo,
+) -> None:
+    print(f"This is the root dir: {root_dir}")
+    dest_dir = root_dir / "board" / board.name / "uefi_wrapper"
+    dest_dir.mkdir(exist_ok=True, parents=True)
+    dest = dest_dir / "uefi_wrapper.efi"
+    loader_address_str = f"0x{hex(board.loader_link_address)}"
+    print(f"This is teh loader_address_string: {loader_address_str}")
+    r = system(
+        f"export LOAD_ADDRESS=\"{loader_address_str}\""
+    )
+
+    # @kwinter: Support different targets in the future.
+    target_triple = "aarch64-unknown-uefi"
+    r = system(
+        f"cargo build --manifest-path uefi_wrapper/Cargo.toml --target {target_triple} --release"
+    )
+
+    cargo_output = f"./uefi_wrapper/target/{target_triple}/release/uefi_wrapper.efi"
+
+    copy(cargo_output, dest)
 
 def main() -> None:
     parser = ArgumentParser()
@@ -652,6 +675,8 @@ def main() -> None:
             build_elf_component("loader", root_dir, build_dir, board, config, loader_defines)
             build_elf_component("monitor", root_dir, build_dir, board, config, [])
             build_lib_component("libmicrokit", root_dir, build_dir, board, config)
+        # Create the UEFI wrapper for the board
+        build_uefi_component(root_dir, board)
         # Setup the examples
         for example, example_path in board.examples.items():
             include_dir = root_dir / "board" / board.name / "example" / example

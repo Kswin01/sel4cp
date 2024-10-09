@@ -1,0 +1,11 @@
+[package]
+name = "uefi_wrapper"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+log = "0.4.22"
+uefi = { version = "0.31.0", features = ["logger", "panic_handler"] }
+object = "0.36.4"
+goblin = { version = "0.8.2", default-features = false, features = ["pe32", "pe64"] }
+linked_list_allocator = "0.10.5"
