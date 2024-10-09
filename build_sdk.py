@@ -553,13 +553,14 @@ def build_uefi_component(
     r = system(
         f"export LOAD_ADDRESS=\"{loader_address_str}\""
     )
+    assert(r == 0)
 
     # @kwinter: Support different targets in the future.
     target_triple = "aarch64-unknown-uefi"
     r = system(
         f"cargo build --manifest-path uefi_wrapper/Cargo.toml --target {target_triple} --release"
     )
-
+    assert(r == 0)
     cargo_output = f"./uefi_wrapper/target/{target_triple}/release/uefi_wrapper.efi"
 
     copy(cargo_output, dest)

@@ -353,7 +353,6 @@ impl<'a> Loader<'a> {
         loader_buf.flush().unwrap();
 
         if (file_type == "EFI") {
-            println!("We are compiling an efi image. This is the max capacity of our BufWriter: {}", loader_buf.capacity());
             // Get the pre-compiled UEFI wrapper for the appropriate board.
             let uefi_wrapper: Vec<u8> = std::fs::read(uefi_wrapper_path).unwrap();
             let uefi_wrapper = &uefi_wrapper[..];
@@ -384,9 +383,6 @@ impl<'a> Loader<'a> {
             let new_pe = pe_writer.write_into().unwrap();
             std::fs::write(path, &new_pe[..]).unwrap();
         }
-        // else if (file_type == "BIN") {
-        //     loader_buf.flush().unwrap();
-        // }
     }
 
     fn riscv64_setup_pagetables(

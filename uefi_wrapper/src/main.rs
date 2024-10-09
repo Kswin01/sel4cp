@@ -1,12 +1,8 @@
 #![no_main]
 #![no_std]
 
-#[macro_use]
-mod util;
-
 use core::{ffi::CStr, str};
 use core::mem::MaybeUninit;
-use log::info;
 use uefi::{boot::{open_protocol_exclusive, AllocateType, MemoryType, ScopedProtocol}, mem::memory_map::MemoryMap, prelude::*, system, table::boot};
 use uefi::{prelude::*, Guid};
 use uefi::proto::loaded_image::LoadedImage;
@@ -25,7 +21,6 @@ static ALLOCATOR: LockedHeap = LockedHeap::empty();
 #[entry]
 fn main(_image_handle: Handle, system_table: SystemTable<Boot>) -> Status {
     uefi::helpers::init().unwrap();
-    info!("This is the load address env var: {}", load_addr_str);
     /* Get the load address that the loader image expected to be copied into. */
     let load_addr: u64 = u64::from_str_radix(load_addr_str.strip_prefix("0x").unwrap(), 16).expect("Load address was not a valid hex string");
 
@@ -50,7 +45,6 @@ fn main(_image_handle: Handle, system_table: SystemTable<Boot>) -> Status {
     for section in pe_parsed.sections {
         let name = unsafe{ CStr::from_ptr(section.name.as_ptr() as *const i8) };
         if name.to_str().unwrap() == ".mloader" {
-            info!("Found the mloader section!");
             /* Allocate the region that we will load the image into */
             // TODO: What if this conflicts with where UEFI has loaded us (or something else that UEFI is using?)
             // We should:
