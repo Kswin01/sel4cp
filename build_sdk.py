@@ -558,9 +558,7 @@ def build_uefi_component(
     )
     assert(r == 0)
 
-    assert(r == 0)
     cargo_output = f"./uefi_wrapper/target/{target_triple}/release/uefi_wrapper.efi"
-
     copy(cargo_output, dest)
 
 def main() -> None:
