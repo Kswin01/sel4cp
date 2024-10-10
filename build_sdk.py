@@ -549,8 +549,6 @@ def build_uefi_component(
     dest_dir.mkdir(exist_ok=True, parents=True)
     dest = dest_dir / "uefi_wrapper.efi"
     loader_address_str = f"0x{hex(board.loader_link_address)}"
-    print(f"This is teh loader_address_string: {loader_address_str}")
-
     target_triple = "aarch64-unknown-uefi"
     # @kwinter: Support different targets in the future.
     r = system(
