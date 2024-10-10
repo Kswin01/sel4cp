@@ -485,11 +485,18 @@ impl<'a> Loader<'a> {
         boot_lvl0_lower[..8].copy_from_slice(&(boot_lvl1_lower_addr | 3).to_le_bytes());
 
         let mut boot_lvl1_lower: [u8; PAGE_TABLE_SIZE] = [0; PAGE_TABLE_SIZE];
+        // For the first gigabyte of page table entries, we set the memory attributes to strongly ordered,
+        // and the exec permissions to exec never. As stated in ARM DDI 0487J.a page B2-296:
+        // "Failure to mark a memory location with any Device memory attribute as execute-never for all Exception levels is a programming error"
+        // If we wish to prevent speculative instruction fetches from certain device memory regions, we must
+        // also set the execute never bits.
+
+        // @kwinter: We need to have a more principled way of finding out if we are currently dealing with device memory.
         for i in 0..512 {
             #[allow(clippy::identity_op)] // keep the (0 << 2) for clarity
             let pt_entry: u64 = ((i as u64) << AARCH64_1GB_BLOCK_BITS) |
                 (1 << 10) | // access flag
-                // (0 << 2) |
+                (0 << 2) |
                 // (1) |
                 (3 << 8) |  // inner-shareable
                 if (i == 0) {(0 << 2)} else {4 << 2} | // Map first 1G as strongly ordered due to UART residing here. Otherwise, normal memory.
