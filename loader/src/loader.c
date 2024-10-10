@@ -326,7 +326,7 @@ static void puthex(uintptr_t val)
 static enum el current_el(void)
 {
     /* See: C5.2.1 CurrentEL */
-    uint32_t val = 1;
+    uint32_t val;
     asm volatile("mrs %x0, CurrentEL" : "=r"(val) :: "cc");
     /* bottom two bits are res0 */
     return (enum el) val >> 2;

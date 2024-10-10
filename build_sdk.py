@@ -129,7 +129,7 @@ SUPPORTED_BOARDS = (
         name="imx8mm_evk",
         arch=KernelArch.AARCH64,
         gcc_cpu="cortex-a53",
-        loader_link_address=0x41000000,
+        loader_link_address=0x42000000,
         kernel_options={
             "KernelPlatform": "imx8mm-evk",
             "KernelIsMCS": True,
@@ -550,16 +550,14 @@ def build_uefi_component(
     dest = dest_dir / "uefi_wrapper.efi"
     loader_address_str = f"0x{hex(board.loader_link_address)}"
     print(f"This is teh loader_address_string: {loader_address_str}")
+
+    target_triple = "aarch64-unknown-uefi"
+    # @kwinter: Support different targets in the future.
     r = system(
-        f"export LOAD_ADDRESS=\"{loader_address_str}\""
+        f"export LOAD_ADDRESS=\"{loader_address_str}\"; cargo build --manifest-path uefi_wrapper/Cargo.toml --target {target_triple} --release"
     )
     assert(r == 0)
 
-    # @kwinter: Support different targets in the future.
-    target_triple = "aarch64-unknown-uefi"
-    r = system(
-        f"cargo build --manifest-path uefi_wrapper/Cargo.toml --target {target_triple} --release"
-    )
     assert(r == 0)
     cargo_output = f"./uefi_wrapper/target/{target_triple}/release/uefi_wrapper.efi"
 

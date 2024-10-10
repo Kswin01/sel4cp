@@ -383,6 +383,7 @@ impl<'a> Loader<'a> {
             let new_pe = pe_writer.write_into().unwrap();
             std::fs::write(path, &new_pe[..]).unwrap();
         }
+
     }
 
     fn riscv64_setup_pagetables(
@@ -480,7 +481,6 @@ impl<'a> Loader<'a> {
             .find_symbol("boot_lvl0_upper")
             .expect("Could not find 'boot_lvl0_upper' symbol");
 
-        
         let mut boot_lvl0_lower: [u8; PAGE_TABLE_SIZE] = [0; PAGE_TABLE_SIZE];
         boot_lvl0_lower[..8].copy_from_slice(&(boot_lvl1_lower_addr | 3).to_le_bytes());
 
@@ -489,7 +489,9 @@ impl<'a> Loader<'a> {
             #[allow(clippy::identity_op)] // keep the (0 << 2) for clarity
             let pt_entry: u64 = ((i as u64) << AARCH64_1GB_BLOCK_BITS) |
                 (1 << 10) | // access flag
-                (3 << 8)  |  // inner-shareable
+                // (0 << 2) |
+                // (1) |
+                (3 << 8) |  // inner-shareable
                 if (i == 0) {(0 << 2)} else {4 << 2} | // Map first 1G as strongly ordered due to UART residing here. Otherwise, normal memory.
                 (1)       |  // 1G block
                 if (i == 0) {(1 << 54) | (1 << 53) } else {0}; // Set exec never for device memory.

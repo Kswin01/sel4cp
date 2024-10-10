@@ -3008,13 +3008,12 @@ impl<'a> Args<'a> {
         // Default arguments
         let mut output = "loader.img";
         let mut report = "report.txt";
+        let mut image_type = "BIN";
         let mut search_paths = Vec::new();
         // Arguments expected to be provided by the user
         let mut system = None;
         let mut board = None;
         let mut config = None;
-        // @kwinter: Do we want to make this a default arg?
-        let mut image_type = None;
 
         if args.len() <= 1 {
             print_usage(available_boards);
@@ -3073,7 +3072,7 @@ impl<'a> Args<'a> {
                 "--image-type" => {
                     in_search_path = false;
                     if i < args.len() - 1 {
-                        image_type = Some(&args[i + 1]);
+                        image_type = &args[i + 1];
                         i += 1;
                     } else {
                         eprintln!("microkit: error: argument --image-type: expected one argument");
@@ -3115,11 +3114,6 @@ impl<'a> Args<'a> {
         if config.is_none() {
             missing_args.push("--config");
         }
-        if image_type.is_none() {
-            missing_args.push("--image-type")
-        }
-        // @kwinter: figure out if we want to default the image type to bin, or
-        // make it a required arg.
 
         if !missing_args.is_empty() {
             print_usage(available_boards);
@@ -3136,7 +3130,7 @@ impl<'a> Args<'a> {
             config: config.unwrap(),
             report,
             output,
-            image_type: image_type.unwrap(),
+            image_type,
             search_paths,
         }
     }
@@ -3632,7 +3626,7 @@ fn main() -> Result<(), String> {
         built_system.reserved_region,
         loader_regions,
     );
-    loader.write_image(Path::new(args.output), "EFI", Path::new(&uefi_wrapper_path));
+    loader.write_image(Path::new(args.output), args.image_type, Path::new(&uefi_wrapper_path));
 
     Ok(())
 }
