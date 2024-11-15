@@ -831,7 +831,7 @@ fn emulate_kernel_boot(
         panic!("Couldn't find appropriate region for initial task kernel objects");
     }
 
-    let fixed_cap_count = 0x10;
+    let fixed_cap_count = 0x11;
     let sched_control_cap_count = 1;
     let paging_cap_count = get_arch_n_paging(config, initial_task_virt_region);
     let page_cap_count = initial_task_virt_region.size() / config.minimum_page_size;
