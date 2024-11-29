@@ -140,6 +140,11 @@ pub struct SysSetVar {
     pub kind: SysSetVarKind,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct PmuCounters {
+    pub counter_bits: u64,
+}
+
 #[derive(Debug, Clone)]
 pub struct ChannelEnd {
     pub pd: usize,
@@ -166,6 +171,7 @@ pub struct ProtectionDomain {
     pub stack_size: u64,
     pub smc: bool,
     pub pmu: bool,
+    pub pmu_counters: Option<PmuCounters>,
     pub program_image: PathBuf,
     pub maps: Vec<SysMap>,
     pub irqs: Vec<SysIrq>,
@@ -311,6 +317,23 @@ impl SysMap {
             perms,
             cached,
             text_pos: Some(xml_sdf.doc.text_pos_at(node.range().start)),
+        })
+    }
+}
+
+impl PmuCounters {
+    fn from_xml(
+        xml_sdf: &XmlSystemDescription,
+        counter_string: String,
+    ) -> Result<PmuCounters, String> {
+        let counters: Vec<u64> = counter_string.split(",").map(|x| x.parse::<u64>().unwrap()).collect();
+        let mut counter_bits:u64 = 0;
+        for counter in counters.iter() {
+            counter_bits = counter_bits | (1 << counter);
+        }
+
+        Ok(PmuCounters {
+            counter_bits,
         })
     }
 }
@@ -481,7 +504,7 @@ impl ProtectionDomain {
 
         let mut program_image = None;
         let mut virtual_machine = None;
-
+        let mut pmu_counters = None;
         // Default to minimum priority
         let priority = if let Some(xml_priority) = node.attribute("priority") {
             sdf_parse_number(xml_priority, node)?
@@ -616,6 +639,20 @@ impl ProtectionDomain {
 
                     virtual_machine = Some(VirtualMachine::from_xml(config, xml_sdf, &child)?);
                 }
+                "pmu_counters" => {
+                    check_attributes(xml_sdf, &child, &["counters"])?;
+                    if pmu_counters.is_some() {
+                        return Err(value_error(
+                            xml_sdf,
+                            node,
+                            "pmu_counters must only be specified once".to_string(),
+                        ));
+                    }
+                    if pmu == true {
+                        let counter_string = checked_lookup(xml_sdf, &child, "counters")?.to_string();
+                        pmu_counters = Some(PmuCounters::from_xml(xml_sdf, counter_string)?);
+                    }
+                }
                 _ => {
                     let pos = xml_sdf.doc.text_pos_at(child.range().start);
                     return Err(format!(
@@ -648,6 +685,7 @@ impl ProtectionDomain {
             stack_size,
             smc,
             pmu,
+            pmu_counters,
             program_image: program_image.unwrap(),
             maps,
             irqs,

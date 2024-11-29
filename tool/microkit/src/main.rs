@@ -2444,6 +2444,16 @@ fn build_system(
 
     for (pd_idx, pd) in system.protection_domains.iter().enumerate() {
         if pd.pmu {
+            // @kwinter: This badge is in little endian. Maybe changes this.
+            let mut badge_bits:u64 = 0;
+            if pd.pmu_counters.is_some() {
+                badge_bits = pd.pmu_counters.as_ref().unwrap().counter_bits;
+            }
+            if badge_bits != 0 {
+                print!("We got a badge value ---- {:x}", badge_bits);
+            } else {
+                print!("We got no badge!");
+            }
             // @kwinter: add some error checking here that we are on a supported platform.
             let cnode_obj = &cnode_objs[pd_idx];
             system_invocations.push(Invocation::new(
@@ -2456,7 +2466,7 @@ fn build_system(
                     src_obj: PMU_CONTROL_CAP_ADDRESS,
                     src_depth: config.cap_address_bits,
                     rights: Rights::All as u64, // FIXME: Check rights
-                    badge: 0,
+                    badge: badge_bits,
                 }
             ));
         }
