@@ -2088,15 +2088,15 @@ fn build_system(
         all_pd_page_tables[i].puds[0] = Some(PUD::new());
     }
     for (pd_idx, vaddr) in &all_pd_ds {
-        let d_idx = (vaddr >> 30) as usize & 0x1F;
+        let d_idx = (vaddr >> 30) as usize & 0x1FF;
         if let Some(pud) = &mut all_pd_page_tables[*pd_idx].puds[0] {
             pud.dirs[d_idx] = Some(DIR::new());
         }
     }
 
     for (pd_idx, vaddr) in &all_pd_pts {
-        let d_idx = (vaddr >> 30) as usize & 0x1F;
-        let pt_idx = (vaddr >> 21) as usize & 0x1F;
+        let d_idx = (vaddr >> 30) as usize & 0x1FF;
+        let pt_idx = (vaddr >> 21) as usize & 0x1FF;
         if let Some(pud) = &mut all_pd_page_tables[*pd_idx].puds[0] {
             if let Some(dir) = &mut pud.dirs[d_idx] {
                 dir.pts[pt_idx] = Some(PT::new());
@@ -2154,9 +2154,9 @@ fn build_system(
                                 let cap = mr_pages[child_mr][mr_idx].cap_addr;
 
                                 let vaddr = child_mp.vaddr + child_mr.page_bytes() * mr_idx as u64;
-                                let d_idx = (vaddr >> 30) as usize & 0x1F;
-                                let pt_idx = (vaddr >> 21) as usize & 0x1F;
-                                let page_idx = (vaddr >> 12) as usize & 0x1F;
+                                let d_idx = (vaddr >> 30) as usize & 0x1FF;
+                                let pt_idx = (vaddr >> 21) as usize & 0x1FF;
+                                let page_idx = (vaddr >> 12) as usize & 0x1FF;
 
                                 let page_table = &mut all_pd_page_tables[maybe_child_idx].puds[0]
                                     .as_mut()
