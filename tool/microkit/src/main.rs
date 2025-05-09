@@ -2153,7 +2153,7 @@ fn build_system(
                             for mr_idx in 0..mr_pages[child_mr].len() {
                                 let cap = mr_pages[child_mr][mr_idx].cap_addr;
 
-                                let vaddr = child_mp.vaddr + child_mr.page_bytes() * mr_idx as u64;
+                                let vaddr = child_mp.vaddr + child_mr.page_size_bytes() * mr_idx as u64;
                                 let d_idx = (vaddr >> 30) as usize & 0x1FF;
                                 let pt_idx = (vaddr >> 21) as usize & 0x1FF;
                                 let page_idx = (vaddr >> 12) as usize & 0x1FF;
